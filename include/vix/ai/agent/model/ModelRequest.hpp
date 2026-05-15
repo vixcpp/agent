@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include <vix/json/json.hpp>
+#include <vix/json.hpp>
 
 namespace vix::ai::agent
 {

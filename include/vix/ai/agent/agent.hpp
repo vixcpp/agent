@@ -13,8 +13,8 @@
  *  Vix.cpp
  *
  */
-#ifndef VIX_AI_AGENT_AGENT_HPP
-#define VIX_AI_AGENT_AGENT_HPP
+#ifndef VIX_AI_AGENT_AGENT_UMBRELLA_HPP
+#define VIX_AI_AGENT_AGENT_UMBRELLA_HPP
 
 #include <vix/ai/agent/Agent.hpp>
 #include <vix/ai/agent/AgentConfig.hpp>
@@ -45,4 +45,4 @@
 #include <vix/ai/agent/workspace/FileScanPolicy.hpp>
 #include <vix/ai/agent/workspace/ProjectScanner.hpp>
 
-#endif // VIX_AI_AGENT_AGENT_HPP
+#endif // VIX_AI_AGENT_AGENT_UMBRELLA_HPP

@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <vix/ai/agent/AgentError.hpp>
 #include <vix/ai/agent/AgentRunTimer.hpp>
@@ -121,15 +122,15 @@ namespace vix::ai::agent
 
   AgentResult<bool> OllamaProvider::available() const
   {
-    vix::process::Command command;
-    command.program = "ollama";
-    command.args = {"list"};
-    command.options.stdout_mode = vix::process::PipeMode::Pipe;
-    command.options.stderr_mode = vix::process::PipeMode::Pipe;
-    command.options.stdin_mode = vix::process::PipeMode::Null;
-    command.options.search_in_path = true;
-    command.options.detach = false;
-    command.options.inherit_environment = true;
+    vix::process::Command command("ollama");
+
+    command.arg("list")
+        .stdout_mode(vix::process::PipeMode::Pipe)
+        .stderr_mode(vix::process::PipeMode::Pipe)
+        .stdin_mode(vix::process::PipeMode::Null)
+        .search_in_path(true)
+        .detach(false)
+        .inherit_environment(true);
 
     auto output = vix::process::output(command);
     if (!output)
@@ -172,24 +173,23 @@ namespace vix::ai::agent
     const vix::json::Json payload =
         build_ollama_payload(model, prompt, request);
 
-    vix::process::Command command;
-    command.program = "curl";
-    command.args = {
-        "-s",
-        "-X",
-        "POST",
-        endpoint_ + "/api/generate",
-        "-H",
-        "Content-Type: application/json",
-        "-d",
-        payload.dump()};
+    vix::process::Command command("curl");
 
-    command.options.stdout_mode = vix::process::PipeMode::Pipe;
-    command.options.stderr_mode = vix::process::PipeMode::Pipe;
-    command.options.stdin_mode = vix::process::PipeMode::Null;
-    command.options.search_in_path = true;
-    command.options.detach = false;
-    command.options.inherit_environment = true;
+    command.args(std::vector<std::string>{
+                     "-s",
+                     "-X",
+                     "POST",
+                     endpoint_ + "/api/generate",
+                     "-H",
+                     "Content-Type: application/json",
+                     "-d",
+                     payload.dump()})
+        .stdout_mode(vix::process::PipeMode::Pipe)
+        .stderr_mode(vix::process::PipeMode::Pipe)
+        .stdin_mode(vix::process::PipeMode::Null)
+        .search_in_path(true)
+        .detach(false)
+        .inherit_environment(true);
 
     auto output = vix::process::output(command);
     if (!output)

@@ -158,17 +158,16 @@ namespace vix::ai::agent
       return resolved_workdir.error();
     }
 
-    vix::process::Command command;
-    command.program = program;
-    command.args = read_args(call.arguments);
+    vix::process::Command command(program);
 
-    command.options.stdout_mode = vix::process::PipeMode::Pipe;
-    command.options.stderr_mode = vix::process::PipeMode::Pipe;
-    command.options.stdin_mode = vix::process::PipeMode::Null;
-    command.options.search_in_path = true;
-    command.options.detach = false;
-    command.options.inherit_environment = true;
-    command.options.working_directory = resolved_workdir.value();
+    command.args(read_args(call.arguments))
+        .stdout_mode(vix::process::PipeMode::Pipe)
+        .stderr_mode(vix::process::PipeMode::Pipe)
+        .stdin_mode(vix::process::PipeMode::Null)
+        .search_in_path(true)
+        .detach(false)
+        .inherit_environment(true)
+        .cwd(resolved_workdir.value());
 
     auto output = vix::process::output(command);
     if (!output)

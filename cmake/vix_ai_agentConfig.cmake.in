@@ -1,0 +1,15 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(vix_error CONFIG)
+find_dependency(vix_json CONFIG)
+find_dependency(vix_fs CONFIG)
+find_dependency(vix_path CONFIG)
+find_dependency(vix_process CONFIG)
+find_dependency(vix_env CONFIG)
+find_dependency(vix_time CONFIG)
+find_dependency(vix_crypto CONFIG)
+find_dependency(vix_log CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/vix_ai_agentTargets.cmake")

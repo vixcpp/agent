@@ -16,10 +16,11 @@
 #ifndef VIX_AI_AGENT_AGENTRESPONSE_HPP
 #define VIX_AI_AGENT_AGENTRESPONSE_HPP
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
-#include <vix/json/json.hpp>
+#include <vix/json.hpp>
 
 namespace vix::ai::agent
 {
