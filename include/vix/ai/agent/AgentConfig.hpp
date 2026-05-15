@@ -117,7 +117,7 @@ namespace vix::ai::agent
     /**
      * @brief Whether the agent may execute controlled local commands.
      */
-    bool allow_process{true};
+    bool allow_process{false};
 
     /**
      * @brief Whether the agent may read files from the workspace.
