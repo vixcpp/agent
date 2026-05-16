@@ -405,6 +405,7 @@ if(VIX_AI_AGENT_ENABLE_INSTALL)
     )
   endif()
 endif()
+
 # --------------------------------------------------------------------
 # Examples
 # --------------------------------------------------------------------
@@ -435,8 +436,43 @@ if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples"
     PRIVATE
       vix::ai_agent
   )
-endif()
 
+  add_executable(vix_ai_agent_with_cache
+    examples/agent_with_cache.cpp
+  )
+
+  target_link_libraries(vix_ai_agent_with_cache
+    PRIVATE
+      vix::ai_agent
+  )
+
+  add_executable(vix_ai_agent_with_command_tool
+    examples/agent_with_command_tool.cpp
+  )
+
+  target_link_libraries(vix_ai_agent_with_command_tool
+    PRIVATE
+      vix::ai_agent
+  )
+
+  add_executable(vix_ai_agent_custom_provider
+    examples/custom_provider.cpp
+  )
+
+  target_link_libraries(vix_ai_agent_custom_provider
+    PRIVATE
+      vix::ai_agent
+  )
+
+  add_executable(vix_ai_agent_public_api
+    examples/public_api.cpp
+  )
+
+  target_link_libraries(vix_ai_agent_public_api
+    PRIVATE
+      vix::ai_agent
+  )
+endif()
 # --------------------------------------------------------------------
 # Tests
 # --------------------------------------------------------------------

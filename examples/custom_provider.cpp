@@ -1,6 +1,6 @@
 /**
  *
- *  @file basic_agent.cpp
+ *  @file custom_provider.cpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2026, Gaspard Kirira.
@@ -13,17 +13,53 @@
  *  Vix.cpp
  *
  */
+#include <memory>
+#include <string_view>
+
 #include <vix/ai/agent/agent.hpp>
 #include <vix/print.hpp>
-#include <memory>
+
+namespace
+{
+  class EchoProvider final : public vix::ai::agent::ModelProvider
+  {
+  public:
+    [[nodiscard]] std::string_view name() const noexcept override
+    {
+      return "echo";
+    }
+
+    [[nodiscard]] bool local() const noexcept override
+    {
+      return true;
+    }
+
+    [[nodiscard]] vix::ai::agent::AgentResult<bool> available() const override
+    {
+      return true;
+    }
+
+    [[nodiscard]] vix::ai::agent::AgentResult<vix::ai::agent::ModelResponse>
+    generate(const vix::ai::agent::ModelRequest &request) override
+    {
+      vix::ai::agent::ModelResponse response;
+
+      response.text = "Echo provider received: " + request.prompt;
+      response.model = request.model;
+      response.provider = "echo";
+      response.status = vix::ai::agent::ModelResponseStatus::Completed;
+
+      return response;
+    }
+  };
+}
 
 int main()
 {
   vix::ai::agent::AgentConfig config;
 
-  config.provider = "ollama";
-  config.model = "llama3";
-  config.model_url = "http://127.0.0.1:11434";
+  config.provider = "echo";
+  config.model = "echo-model";
 
   config.allow_file_read = false;
   config.allow_process = false;
@@ -32,22 +68,14 @@ int main()
   config.use_cache = false;
   config.persist_memory = false;
 
-  auto provider = std::make_shared<vix::ai::agent::OllamaProvider>(config);
-
-  auto available = provider->available();
-  if (!available || !available.value())
-  {
-    vix::print("Ollama is not available.");
-    vix::print("Start it with: ollama serve");
-    return 1;
-  }
+  auto provider = std::make_shared<EchoProvider>();
 
   vix::ai::agent::Agent agent(config, provider);
 
   vix::ai::agent::AgentRequest request;
 
-  request.input = "Explain what Vix.cpp is in simple words.";
   request.workspace = ".";
+  request.input = "Hello custom provider.";
   request.mode = vix::ai::agent::AgentRequestMode::Chat;
 
   request.allow_tools = false;
@@ -65,11 +93,6 @@ int main()
   }
 
   vix::print(response.value().text);
-  vix::print();
-  vix::print("Run id:", response.value().run_id);
-  vix::print("Provider:", response.value().provider);
-  vix::print("Model:", response.value().model);
-  vix::print("Duration:", response.value().duration_ms, "ms");
 
   return 0;
 }

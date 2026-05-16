@@ -13,23 +13,25 @@
  *  Vix.cpp
  *
  */
-#include <iostream>
-
 #include <vix/ai/agent/agent.hpp>
+#include <vix/print.hpp>
 
 int main()
 {
   vix::ai::agent::AgentConfig config;
+
   config.max_files = 100;
   config.max_file_size = 128 * 1024;
+
   config.allow_file_read = true;
   config.allow_process = false;
   config.allow_file_write = false;
 
   auto workspace = vix::ai::agent::AgentWorkspace::open(".", config);
+
   if (!workspace)
   {
-    std::cerr << "Workspace error: " << workspace.error().message() << '\n';
+    vix::print("Workspace error:", workspace.error().message());
     return 1;
   }
 
@@ -37,23 +39,22 @@ int main()
   vix::ai::agent::ProjectScanner scanner(workspace.value(), policy);
 
   auto scan = scanner.scan();
+
   if (!scan)
   {
-    std::cerr << "Scan error: " << scan.error().message() << '\n';
+    vix::print("Scan error:", scan.error().message());
     return 1;
   }
 
-  std::cout << "Workspace: " << scan.value().root << '\n';
-  std::cout << "Files: " << scan.value().files.size() << '\n';
-  std::cout << "Skipped: " << scan.value().skipped << '\n';
-  std::cout << "Truncated: " << (scan.value().truncated ? "yes" : "no") << '\n';
-  std::cout << '\n';
+  vix::print("Workspace:", scan.value().root);
+  vix::print("Files:", scan.value().files.size());
+  vix::print("Skipped:", scan.value().skipped);
+  vix::print("Truncated:", scan.value().truncated ? "yes" : "no");
+  vix::print();
 
   for (const auto &file : scan.value().files)
   {
-    std::cout << "- " << file.relative_path
-              << " (" << file.size << " bytes)"
-              << '\n';
+    vix::print("-", file.relative_path, "(", file.size, "bytes )");
   }
 
   return 0;

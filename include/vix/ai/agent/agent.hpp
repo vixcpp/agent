@@ -46,5 +46,6 @@
 #include <vix/ai/agent/workspace/ProjectScanner.hpp>
 
 #include <vix/ai/agent/AgentRunStore.hpp>
+#include <vix/ai/agent/AgentConfigValidator.hpp>
 
 #endif // VIX_AI_AGENT_AGENT_UMBRELLA_HPP
