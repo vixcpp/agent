@@ -55,7 +55,12 @@ namespace vix::ai::agent
         return "You are Vix Agent. Answer clearly and focus on the user's request.";
 
       case AgentRequestMode::Analyze:
-        return "You are Vix Agent. Analyze the workspace and explain the important findings.";
+        return "You are Vix Agent, a local-first C++ project assistant.\n"
+               "Analyze the provided workspace context and explain the real project architecture.\n"
+               "Do not return example JSON.\n"
+               "Do not invent unrelated projects.\n"
+               "Base your answer only on the files and context provided.\n"
+               "Focus on folders, modules, build system, CLI commands, and how the pieces fit together.";
 
       case AgentRequestMode::Explain:
         return "You are Vix Agent. Explain the topic clearly without modifying files.";
@@ -75,18 +80,93 @@ namespace vix::ai::agent
       context += scan.root;
       context += "\n\nFiles:\n";
 
+      constexpr std::size_t max_files_in_prompt = 120;
+      std::size_t count = 0;
+
       for (const auto &file : scan.files)
       {
+        if (count >= max_files_in_prompt)
+        {
+          context += "\nFile list truncated for model context.\n";
+          break;
+        }
+
         context += "- ";
         context += file.relative_path;
         context += " (";
         context += std::to_string(file.size);
         context += " bytes)\n";
+
+        ++count;
       }
 
       if (scan.truncated)
       {
         context += "\nFile list was truncated because max_files was reached.\n";
+      }
+
+      return context;
+    }
+
+    [[nodiscard]] bool is_analyze_entry_file(std::string_view path)
+    {
+      return path == "README.md" ||
+             path == "readme.md" ||
+             path == "CMakeLists.txt" ||
+             path == "CMakePresets.json" ||
+             path == "vix.json" ||
+             path == "package.json";
+    }
+
+    [[nodiscard]] std::string build_file_content_context(
+        const AgentWorkspace &workspace,
+        const ProjectScanResult &scan,
+        const AgentConfig &config)
+    {
+      FileScanPolicy policy(config);
+      FileReader reader(workspace, policy);
+
+      std::string context;
+      unsigned included = 0;
+      constexpr unsigned max_included_files = 4;
+
+      for (const auto &file : scan.files)
+      {
+        if (included >= max_included_files)
+        {
+          break;
+        }
+
+        if (!is_analyze_entry_file(file.relative_path))
+        {
+          continue;
+        }
+
+        auto content = reader.read_text(file.relative_path);
+        if (!content)
+        {
+          continue;
+        }
+
+        context += "\nFile: ";
+        context += file.relative_path;
+        context += "\n```text\n";
+        constexpr std::size_t max_file_chars = 8'000;
+
+        const std::string &text = content.value().content;
+
+        if (text.size() > max_file_chars)
+        {
+          context += text.substr(0, max_file_chars);
+          context += "\n[File content truncated]\n";
+        }
+        else
+        {
+          context += text;
+        }
+        context += "\n```\n";
+
+        ++included;
       }
 
       return context;
@@ -655,6 +735,16 @@ namespace vix::ai::agent
       {
         context += build_file_list_context(scan.value());
         context += "\n";
+
+        if (request.mode == AgentRequestMode::Analyze)
+        {
+          context += "\nImportant project files:\n";
+          context += build_file_content_context(
+              workspace,
+              scan.value(),
+              config_);
+          context += "\n";
+        }
       }
     }
 

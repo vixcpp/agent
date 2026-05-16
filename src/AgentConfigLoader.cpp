@@ -15,6 +15,7 @@
  */
 #include <vix/ai/agent/AgentConfigLoader.hpp>
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -45,6 +46,17 @@ namespace vix::ai::agent
       if (value)
       {
         target = value.value();
+      }
+    }
+
+    void load_uint64(
+        std::uint64_t &target,
+        std::string_view key)
+    {
+      auto value = vix::env::get_uint(key);
+      if (value)
+      {
+        target = static_cast<std::uint64_t>(value.value());
       }
     }
 
@@ -79,7 +91,7 @@ namespace vix::ai::agent
     load_string(config.runs_dir, make_key(prefix, "RUNS_DIR"));
     load_string(config.logs_dir, make_key(prefix, "LOGS_DIR"));
 
-    load_uint(config.timeout_ms, make_key(prefix, "TIMEOUT_MS"));
+    load_uint64(config.timeout_ms, make_key(prefix, "TIMEOUT_MS"));
     load_uint(config.max_files, make_key(prefix, "MAX_FILES"));
     load_uint(config.max_file_size, make_key(prefix, "MAX_FILE_SIZE"));
     load_uint(config.max_tool_output, make_key(prefix, "MAX_TOOL_OUTPUT"));

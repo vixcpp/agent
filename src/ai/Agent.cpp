@@ -1,3 +1,18 @@
+/**
+ *
+ *  @file Agent.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2026, Gaspard Kirira.
+ *  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 #include <vix/ai/Agent.hpp>
 
 #include <algorithm>
@@ -65,6 +80,12 @@ namespace vix::ai
     return *this;
   }
 
+  Agent &Agent::set_timeout(std::uint64_t timeout_ms)
+  {
+    config_.timeout_ms = timeout_ms;
+    return *this;
+  }
+
   Agent &Agent::set_workspace(std::string workspace)
   {
     workspace_ = std::move(workspace);
@@ -100,6 +121,7 @@ namespace vix::ai
     request.allow_process = config_.allow_process;
     request.allow_file_write = false;
     request.use_cache = config_.use_cache;
+    request.timeout_ms = config_.timeout_ms;
 
     auto response = inner.run(request);
 

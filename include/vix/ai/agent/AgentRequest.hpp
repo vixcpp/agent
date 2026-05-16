@@ -18,6 +18,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace vix::ai::agent
 {
@@ -134,6 +135,14 @@ namespace vix::ai::agent
      * @brief Whether cached results may be reused for this request.
      */
     bool use_cache{true};
+
+    /**
+     * @brief Optional timeout override for this request, in milliseconds.
+     *
+     * When set to 0, AgentConfig::timeout_ms is used.
+     * This is useful for local models that may take longer on first load.
+     */
+    std::uint64_t timeout_ms{0};
   };
 
 } // namespace vix::ai::agent

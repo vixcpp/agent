@@ -16,7 +16,7 @@
 #ifndef VIX_AI_AGENT_AGENTCONFIG_HPP
 #define VIX_AI_AGENT_AGENTCONFIG_HPP
 
-#include <string>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -88,8 +88,11 @@ namespace vix::ai::agent
 
     /**
      * @brief Default timeout for model calls and tool execution, in milliseconds.
+     *
+     * Local models such as Ollama may need more than 30 seconds during the first
+     * load, especially on CPU or small machines.
      */
-    unsigned timeout_ms{30'000};
+    std::uint64_t timeout_ms{30'000};
 
     /**
      * @brief Maximum number of project files the agent may scan.

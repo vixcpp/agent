@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstdint>
 
 #include <vix/ai/Result.hpp>
 #include <vix/ai/agent/Agent.hpp>
@@ -82,6 +83,17 @@ namespace vix::ai
      * @return Reference to this agent for chaining.
      */
     Agent &set_model(std::string model);
+
+    /**
+     * @brief Set the maximum model request timeout in milliseconds.
+     *
+     * This is useful for local models that may take more time to load on the
+     * first request, especially with Ollama on CPU or small machines.
+     *
+     * @param timeout_ms Timeout in milliseconds.
+     * @return Reference to this agent for chaining.
+     */
+    Agent &set_timeout(std::uint64_t timeout_ms);
 
     /**
      * @brief Set the workspace used by the agent.
