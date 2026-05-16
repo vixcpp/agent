@@ -280,6 +280,7 @@ set(VIX_AI_AGENT_SOURCES
   src/workspace/FileScanPolicy.cpp
   src/workspace/FileReader.cpp
   src/workspace/ProjectScanner.cpp
+  src/ai/Agent.cpp
 
   src/tools/ToolRegistry.cpp
   src/tools/FileReadTool.cpp
