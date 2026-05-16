@@ -424,6 +424,15 @@ namespace vix::ai::agent
 
       final_model_response = model_response.value();
 
+      if (!final_model_response.ok())
+      {
+        return make_agent_error(
+            AgentErrorCode::ModelRequestFailed,
+            final_model_response.error.empty()
+                ? "model response failed"
+                : final_model_response.error);
+      }
+
       if (!request.allow_tools ||
           final_model_response.tool_calls.empty())
       {

@@ -88,6 +88,13 @@ namespace vix::ai::agent
         continue;
       }
 
+      if (relative.value().rfind(".vix/", 0) == 0 ||
+          relative.value().find("/.vix/") != std::string::npos)
+      {
+        ++result.skipped;
+        continue;
+      }
+
       ProjectFile file;
       file.path = entry.path;
       file.relative_path = relative.value();
