@@ -72,6 +72,7 @@ option(VIX_AI_AGENT_FETCH_JSON "Auto-fetch vix::json if missing" ON)
 option(VIX_AI_AGENT_FETCH_FS "Auto-fetch vix::fs if missing" ON)
 option(VIX_AI_AGENT_FETCH_PATH "Auto-fetch vix::path if missing" ON)
 option(VIX_AI_AGENT_FETCH_PROCESS "Auto-fetch vix::process if missing" ON)
+option(VIX_AI_AGENT_FETCH_NET "Auto-fetch vix::net if missing" ON)
 option(VIX_AI_AGENT_FETCH_ENV "Auto-fetch vix::env if missing" ON)
 option(VIX_AI_AGENT_FETCH_TIME "Auto-fetch vix::time if missing" ON)
 option(VIX_AI_AGENT_FETCH_CRYPTO "Auto-fetch vix::crypto if missing" ON)
@@ -100,6 +101,7 @@ if(DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD)
   set(VIX_AI_AGENT_FETCH_FS OFF CACHE BOOL "Auto-fetch vix::fs if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_PATH OFF CACHE BOOL "Auto-fetch vix::path if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_PROCESS OFF CACHE BOOL "Auto-fetch vix::process if missing" FORCE)
+  set(VIX_AI_AGENT_FETCH_NET OFF CACHE BOOL "Auto-fetch vix::net if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_ENV OFF CACHE BOOL "Auto-fetch vix::env if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_TIME OFF CACHE BOOL "Auto-fetch vix::time if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_CRYPTO OFF CACHE BOOL "Auto-fetch vix::crypto if missing" FORCE)
@@ -209,6 +211,15 @@ vix_ai_agent_require_dependency(
 )
 
 vix_ai_agent_require_dependency(
+  vix::net
+  vix_net
+  net
+  VIX_AI_AGENT_FETCH_NET
+  https://github.com/vixcpp/net.git
+  v0.1.0
+)
+
+vix_ai_agent_require_dependency(
   vix::env
   vix_env
   env
@@ -306,6 +317,7 @@ target_link_libraries(vix_ai_agent
     vix::fs
     vix::path
     vix::process
+    vix::net
     vix::env
     vix::time
     vix::crypto
@@ -469,6 +481,7 @@ message(STATUS "Json target:    vix::json")
 message(STATUS "Fs target:      vix::fs")
 message(STATUS "Path target:    vix::path")
 message(STATUS "Process target: vix::process")
+message(STATUS "Net target:     vix::net")
 message(STATUS "Env target:     vix::env")
 message(STATUS "Time target:    vix::time")
 message(STATUS "Crypto target:  vix::crypto")

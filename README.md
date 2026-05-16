@@ -113,7 +113,7 @@ Agent::run(...)
 
 Current internal features:
 
-- local Ollama provider
+- local Ollama provider through `vix::net::http`
 - model provider abstraction
 - workspace scanner
 - safe file reader
@@ -802,14 +802,14 @@ From the module directory:
 
 ```bash
 cd ~/vixcpp/vix/modules/agent
-cmake --build build-ninja
+vix build --build-target all -v
 ```
 
 From the Vix root:
 
 ```bash
 cd ~/vixcpp/vix
-cmake --build build-ninja
+vix build --build-target all -v
 ```
 
 ## Example with Ollama
@@ -860,19 +860,5 @@ int main()
 }
 ```
 
-## Roadmap
-
-Planned improvements:
-
-- replace temporary curl usage in `OllamaProvider` with a native Vix HTTP client
-- enforce real process timeouts once `vix::process` supports command timeout
-- add streaming responses
-- add structured tool schemas
-- add safe file write support
-- add richer run replay support
-- add memory store for long-term agent context
-- add more local providers
-- add OpenAI-compatible provider later
-- expose stable helper APIs only after `Agent::run(...)` is fully settled
-
 ## License
+MIT

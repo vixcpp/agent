@@ -19,11 +19,13 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 #include <vix/ai/agent/AgentError.hpp>
 #include <vix/ai/agent/AgentRunTimer.hpp>
 #include <vix/json/json.hpp>
+#include <vix/net/http/ClientRequest.hpp>
+#include <vix/net/http/CurlClient.hpp>
+#include <vix/net/http/Method.hpp>
 #include <vix/process/Command.hpp>
 #include <vix/process/Output.hpp>
 #include <vix/process/PipeMode.hpp>
@@ -97,6 +99,18 @@ namespace vix::ai::agent
       return 0;
     }
 
+    [[nodiscard]] std::uint64_t effective_timeout_ms(
+        const AgentConfig &config,
+        const ModelRequest &request) noexcept
+    {
+      if (request.timeout_ms > 0)
+      {
+        return request.timeout_ms;
+      }
+
+      return config.timeout_ms;
+    }
+
     [[nodiscard]] std::string build_chat_prompt(
         const ModelRequest &request)
     {
@@ -113,6 +127,21 @@ namespace vix::ai::agent
       {
         prompt += role_to_string(message.role);
         prompt += ":\n";
+
+        if (!message.tool_name.empty())
+        {
+          prompt += "[tool: ";
+          prompt += message.tool_name;
+          prompt += "]\n";
+        }
+
+        if (!message.tool_call_id.empty())
+        {
+          prompt += "[tool_call_id: ";
+          prompt += message.tool_call_id;
+          prompt += "]\n";
+        }
+
         prompt += message.content;
         prompt += "\n\n";
       }
@@ -128,16 +157,34 @@ namespace vix::ai::agent
       vix::json::Json payload = vix::json::Json::object();
       payload["model"] = model;
       payload["prompt"] = prompt;
-      payload["stream"] = false;
+      payload["stream"] = request.stream;
 
       if (!request.system_prompt.empty())
       {
         payload["system"] = request.system_prompt;
       }
 
+      if (request.max_tokens > 0)
+      {
+        if (!payload.contains("options") || !payload["options"].is_object())
+        {
+          payload["options"] = vix::json::Json::object();
+        }
+
+        payload["options"]["num_predict"] = request.max_tokens;
+      }
+
       if (request.options.is_object() && !request.options.empty())
       {
-        payload["options"] = request.options;
+        if (!payload.contains("options") || !payload["options"].is_object())
+        {
+          payload["options"] = vix::json::Json::object();
+        }
+
+        for (auto it = request.options.begin(); it != request.options.end(); ++it)
+        {
+          payload["options"][it.key()] = it.value();
+        }
       }
 
       return payload;
@@ -147,16 +194,44 @@ namespace vix::ai::agent
   OllamaProvider::OllamaProvider(AgentConfig config)
       : endpoint_(trim_trailing_slashes(config.model_url)),
         default_model_(config.model),
-        config_(std::move(config))
+        config_(std::move(config)),
+        http_client_(nullptr)
   {
+    ensure_http_client();
   }
 
   OllamaProvider::OllamaProvider(
       std::string endpoint,
       std::string default_model)
       : endpoint_(trim_trailing_slashes(std::move(endpoint))),
-        default_model_(std::move(default_model))
+        default_model_(std::move(default_model)),
+        config_(),
+        http_client_(nullptr)
   {
+    ensure_http_client();
+  }
+
+  OllamaProvider::OllamaProvider(
+      AgentConfig config,
+      std::shared_ptr<vix::net::http::Client> http_client)
+      : endpoint_(trim_trailing_slashes(config.model_url)),
+        default_model_(config.model),
+        config_(std::move(config)),
+        http_client_(std::move(http_client))
+  {
+    ensure_http_client();
+  }
+
+  OllamaProvider::OllamaProvider(
+      std::string endpoint,
+      std::string default_model,
+      std::shared_ptr<vix::net::http::Client> http_client)
+      : endpoint_(trim_trailing_slashes(std::move(endpoint))),
+        default_model_(std::move(default_model)),
+        config_(),
+        http_client_(std::move(http_client))
+  {
+    ensure_http_client();
   }
 
   std::string_view OllamaProvider::name() const noexcept
@@ -195,13 +270,6 @@ namespace vix::ai::agent
   {
     AgentRunTimer timer;
 
-    if (!request.valid())
-    {
-      return make_agent_error(
-          AgentErrorCode::ModelRequestFailed,
-          "model request is invalid");
-    }
-
     const std::string model = effective_model(request);
     const std::string prompt = effective_prompt(request);
 
@@ -226,37 +294,33 @@ namespace vix::ai::agent
           "Ollama endpoint must start with http:// or https://");
     }
 
+    ensure_http_client();
+
+    if (!http_client_)
+    {
+      return make_agent_error(
+          AgentErrorCode::ModelUnavailable,
+          "Ollama HTTP client is not configured");
+    }
+
     const vix::json::Json payload =
         build_ollama_payload(model, prompt, request);
 
-    vix::process::Command command("curl");
+    vix::net::http::ClientRequest http_request;
 
-    command.args(std::vector<std::string>{
-                     "-sS",
-                     "--fail",
-                     "--max-time",
-                     std::to_string(config_.timeout_ms / 1000),
-                     "-X",
-                     "POST",
-                     endpoint_ + "/api/generate",
-                     "-H",
-                     "Content-Type: application/json",
-                     "-d",
-                     payload.dump()})
-        .stdout_mode(vix::process::PipeMode::Pipe)
-        .stderr_mode(vix::process::PipeMode::Pipe)
-        .stdin_mode(vix::process::PipeMode::Null)
-        .search_in_path(true)
-        .detach(false)
-        .inherit_environment(true);
+    http_request
+        .set_method(vix::net::http::Method::Post)
+        .set_url(endpoint_ + "/api/generate")
+        .set_header("Content-Type", "application/json")
+        .set_body(payload.dump())
+        .set_timeout_ms(effective_timeout_ms(config_, request));
 
-    // TODO(agent): replace curl with the Vix HTTP client when it is available.
-    auto output = vix::process::output(command);
-    if (!output)
+    auto http_response = http_client_->send(http_request);
+    if (!http_response)
     {
       return make_agent_error(
           AgentErrorCode::ModelRequestFailed,
-          std::string(output.error().message()));
+          std::string(http_response.error().message()));
     }
 
     ModelResponse response;
@@ -264,19 +328,19 @@ namespace vix::ai::agent
     response.provider = std::string(name());
     response.duration_ms = timer.elapsed_ms();
 
-    if (!output.value().success())
+    if (!http_response.value().success())
     {
       response.status = ModelResponseStatus::Failed;
-      response.error = output.value().stderr_text.empty()
-                           ? output.value().stdout_text
-                           : output.value().stderr_text;
+      response.error = http_response.value().error.empty()
+                           ? http_response.value().body
+                           : http_response.value().error;
       response.raw = vix::json::Json::object();
       return response;
     }
 
     try
     {
-      response.raw = vix::json::Json::parse(output.value().stdout_text);
+      response.raw = vix::json::Json::parse(http_response.value().body);
 
       const std::string ollama_error =
           json_string_or_empty(response.raw, "error");
@@ -347,6 +411,19 @@ namespace vix::ai::agent
     return default_model_;
   }
 
+  std::shared_ptr<vix::net::http::Client>
+  OllamaProvider::http_client() const noexcept
+  {
+    return http_client_;
+  }
+
+  void OllamaProvider::set_http_client(
+      std::shared_ptr<vix::net::http::Client> client)
+  {
+    http_client_ = std::move(client);
+    ensure_http_client();
+  }
+
   std::string OllamaProvider::effective_model(
       const ModelRequest &request) const
   {
@@ -367,6 +444,14 @@ namespace vix::ai::agent
     }
 
     return build_chat_prompt(request);
+  }
+
+  void OllamaProvider::ensure_http_client()
+  {
+    if (!http_client_)
+    {
+      http_client_ = std::make_shared<vix::net::http::CurlClient>();
+    }
   }
 
 } // namespace vix::ai::agent
