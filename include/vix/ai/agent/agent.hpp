@@ -45,4 +45,6 @@
 #include <vix/ai/agent/workspace/FileScanPolicy.hpp>
 #include <vix/ai/agent/workspace/ProjectScanner.hpp>
 
+#include <vix/ai/agent/AgentRunStore.hpp>
+
 #endif // VIX_AI_AGENT_AGENT_UMBRELLA_HPP

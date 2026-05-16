@@ -98,6 +98,65 @@ namespace
     assert(!run_dir.value().empty());
     assert(workspace.value().contains(run_dir.value()));
   }
+
+  void test_reject_parent_directory_escape()
+  {
+    vix::ai::agent::AgentConfig config;
+
+    auto workspace = vix::ai::agent::AgentWorkspace::open(".", config);
+    assert(workspace);
+
+    auto resolved = workspace.value().resolve_inside("../");
+    assert(!resolved);
+  }
+
+  void test_reject_absolute_path_outside_workspace()
+  {
+    vix::ai::agent::AgentConfig config;
+
+    auto workspace = vix::ai::agent::AgentWorkspace::open(".", config);
+    assert(workspace);
+
+    auto resolved = workspace.value().resolve_inside("/tmp");
+    assert(!resolved);
+  }
+
+  void test_accept_absolute_path_inside_workspace()
+  {
+    vix::ai::agent::AgentConfig config;
+
+    auto workspace = vix::ai::agent::AgentWorkspace::open(".", config);
+    assert(workspace);
+
+    auto root = workspace.value().root();
+    auto resolved = workspace.value().resolve_inside(root);
+
+    assert(resolved);
+    assert(resolved.value() == root);
+    assert(workspace.value().contains(resolved.value()));
+  }
+
+  void test_reject_empty_run_id()
+  {
+    vix::ai::agent::AgentConfig config;
+
+    auto workspace = vix::ai::agent::AgentWorkspace::open(".", config);
+    assert(workspace);
+
+    auto run_dir = workspace.value().run_dir("");
+    assert(!run_dir);
+  }
+
+  void test_reject_missing_workspace()
+  {
+    vix::ai::agent::AgentConfig config;
+
+    auto workspace = vix::ai::agent::AgentWorkspace::open(
+        ".vix-agent-missing-workspace",
+        config);
+
+    assert(!workspace);
+  }
 }
 
 void test_agent_workspace()
@@ -107,4 +166,10 @@ void test_agent_workspace()
   test_resolve_inside_workspace();
   test_reject_empty_path();
   test_run_dir();
+
+  test_reject_parent_directory_escape();
+  test_reject_absolute_path_outside_workspace();
+  test_accept_absolute_path_inside_workspace();
+  test_reject_empty_run_id();
+  test_reject_missing_workspace();
 }

@@ -18,6 +18,8 @@
 
 #include <memory>
 #include <string>
+#include <vector>
+#include <optional>
 
 #include <vix/ai/agent/AgentConfig.hpp>
 #include <vix/ai/agent/AgentRequest.hpp>
@@ -26,6 +28,7 @@
 #include <vix/ai/agent/AgentWorkspace.hpp>
 #include <vix/ai/agent/model/ModelProvider.hpp>
 #include <vix/ai/agent/tools/ToolRegistry.hpp>
+#include <vix/ai/agent/tools/ToolResult.hpp>
 
 namespace vix::ai::agent
 {
@@ -135,6 +138,47 @@ namespace vix::ai::agent
         const ModelResponse &model_response,
         std::string run_id,
         std::uint64_t duration_ms) const;
+
+    /**
+     * @brief Execute model-requested tool calls.
+     */
+    [[nodiscard]] AgentResult<std::vector<ToolResult>> run_tool_calls(
+        const ModelResponse &model_response) const;
+
+    /**
+     * @brief Append tool results to a model request.
+     */
+    void append_tool_results(
+        ModelRequest &request,
+        const std::vector<ToolResult> &tool_results) const;
+
+    /**
+     * @brief Convert tool results to public response summaries.
+     */
+    [[nodiscard]] std::vector<AgentToolSummary> build_tool_summaries(
+        const std::vector<ToolResult> &tool_results) const;
+
+    /**
+     * @brief Build a stable cache key for a model request.
+     */
+    [[nodiscard]] AgentResult<std::string> build_model_cache_key(
+        const ModelRequest &request) const;
+
+    /**
+     * @brief Try to load an agent response from cache.
+     */
+    [[nodiscard]] AgentResult<std::optional<AgentResponse>> try_load_cached_response(
+        const AgentWorkspace &workspace,
+        const ModelRequest &request,
+        std::string_view run_id) const;
+
+    /**
+     * @brief Store an agent response in cache.
+     */
+    [[nodiscard]] vix::error::Error store_cached_response(
+        const AgentWorkspace &workspace,
+        const ModelRequest &request,
+        const AgentResponse &response) const;
 
     /**
      * @brief Ensure a default local model provider exists.

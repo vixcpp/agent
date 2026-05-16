@@ -15,6 +15,7 @@
  */
 #include <vix/ai/agent/tools/CommandTool.hpp>
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -230,8 +231,16 @@ namespace vix::ai::agent
       return false;
     }
 
-    return blocked_programs_.find(std::string(program)) ==
-           blocked_programs_.end();
+    if (blocked_programs_.find(std::string(program)) !=
+        blocked_programs_.end())
+    {
+      return false;
+    }
+
+    return std::find(
+               config_.allowed_programs.begin(),
+               config_.allowed_programs.end(),
+               std::string(program)) != config_.allowed_programs.end();
   }
 
   void CommandTool::block_program(std::string program)

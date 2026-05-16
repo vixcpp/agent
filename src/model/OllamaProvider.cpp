@@ -15,6 +15,7 @@
  */
 #include <vix/ai/agent/model/OllamaProvider.hpp>
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -46,6 +47,54 @@ namespace vix::ai::agent
       }
 
       return "user";
+    }
+
+    [[nodiscard]] bool starts_with_http_endpoint(
+        std::string_view endpoint) noexcept
+    {
+      return endpoint.rfind("http://", 0) == 0 ||
+             endpoint.rfind("https://", 0) == 0;
+    }
+
+    [[nodiscard]] std::string trim_trailing_slashes(
+        std::string endpoint)
+    {
+      while (!endpoint.empty() && endpoint.back() == '/')
+      {
+        endpoint.pop_back();
+      }
+
+      return endpoint;
+    }
+
+    [[nodiscard]] std::string json_string_or_empty(
+        const vix::json::Json &json,
+        const char *key)
+    {
+      if (json.contains(key) && json[key].is_string())
+      {
+        return json[key].get<std::string>();
+      }
+
+      return {};
+    }
+
+    [[nodiscard]] std::uint64_t json_uint64_or_zero(
+        const vix::json::Json &json,
+        const char *key)
+    {
+      if (json.contains(key) && json[key].is_number_unsigned())
+      {
+        return json[key].get<std::uint64_t>();
+      }
+
+      if (json.contains(key) && json[key].is_number_integer())
+      {
+        const auto value = json[key].get<std::int64_t>();
+        return value > 0 ? static_cast<std::uint64_t>(value) : 0;
+      }
+
+      return 0;
     }
 
     [[nodiscard]] std::string build_chat_prompt(
@@ -96,7 +145,7 @@ namespace vix::ai::agent
   } // namespace
 
   OllamaProvider::OllamaProvider(AgentConfig config)
-      : endpoint_(config.model_url),
+      : endpoint_(trim_trailing_slashes(config.model_url)),
         default_model_(config.model),
         config_(std::move(config))
   {
@@ -105,7 +154,7 @@ namespace vix::ai::agent
   OllamaProvider::OllamaProvider(
       std::string endpoint,
       std::string default_model)
-      : endpoint_(std::move(endpoint)),
+      : endpoint_(trim_trailing_slashes(std::move(endpoint))),
         default_model_(std::move(default_model))
   {
   }
@@ -170,13 +219,23 @@ namespace vix::ai::agent
           "Ollama prompt cannot be empty");
     }
 
+    if (endpoint_.empty() || !starts_with_http_endpoint(endpoint_))
+    {
+      return make_agent_error(
+          AgentErrorCode::ConfigInvalid,
+          "Ollama endpoint must start with http:// or https://");
+    }
+
     const vix::json::Json payload =
         build_ollama_payload(model, prompt, request);
 
     vix::process::Command command("curl");
 
     command.args(std::vector<std::string>{
-                     "-s",
+                     "-sS",
+                     "--fail",
+                     "--max-time",
+                     std::to_string(config_.timeout_ms / 1000),
                      "-X",
                      "POST",
                      endpoint_ + "/api/generate",
@@ -191,6 +250,7 @@ namespace vix::ai::agent
         .detach(false)
         .inherit_environment(true);
 
+    // TODO(agent): replace curl with the Vix HTTP client when it is available.
     auto output = vix::process::output(command);
     if (!output)
     {
@@ -218,17 +278,53 @@ namespace vix::ai::agent
     {
       response.raw = vix::json::Json::parse(output.value().stdout_text);
 
-      if (response.raw.contains("response") &&
-          response.raw["response"].is_string())
+      const std::string ollama_error =
+          json_string_or_empty(response.raw, "error");
+
+      if (!ollama_error.empty())
       {
-        response.text = response.raw["response"].get<std::string>();
+        response.status = ModelResponseStatus::Failed;
+        response.error = ollama_error;
+        return response;
       }
 
-      if (response.raw.contains("model") &&
-          response.raw["model"].is_string())
+      response.text = json_string_or_empty(response.raw, "response");
+
+      if (response.text.empty())
       {
-        response.model = response.raw["model"].get<std::string>();
+        return make_agent_error(
+            AgentErrorCode::ModelResponseInvalid,
+            "Ollama response does not contain a valid response field");
       }
+
+      const std::string response_model =
+          json_string_or_empty(response.raw, "model");
+
+      if (!response_model.empty())
+      {
+        response.model = response_model;
+      }
+
+      const std::uint64_t total_duration =
+          json_uint64_or_zero(response.raw, "total_duration");
+
+      if (total_duration > 0)
+      {
+        response.duration_ms = total_duration / 1'000'000;
+      }
+      else
+      {
+        response.duration_ms = timer.elapsed_ms();
+      }
+
+      response.usage.input_tokens =
+          json_uint64_or_zero(response.raw, "prompt_eval_count");
+
+      response.usage.output_tokens =
+          json_uint64_or_zero(response.raw, "eval_count");
+
+      response.usage.total_tokens =
+          response.usage.input_tokens + response.usage.output_tokens;
 
       response.status = ModelResponseStatus::Completed;
       return response;

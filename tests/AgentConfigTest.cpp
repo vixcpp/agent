@@ -19,6 +19,7 @@
 
 #include <vix/ai/agent/AgentConfig.hpp>
 #include <vix/ai/agent/AgentConfigLoader.hpp>
+#include <vix/ai/agent/AgentConfigValidator.hpp>
 #include <vix/env/Set.hpp>
 #include <vix/env/Unset.hpp>
 
@@ -46,6 +47,11 @@ namespace
     assert(config.allow_file_read);
     assert(!config.allow_file_write);
     assert(!config.allow_process);
+
+    assert(config.tool_timeout_ms > 0);
+    assert(!config.allowed_programs.empty());
+
+    assert(config.cache_ttl_ms > 0);
   }
 
   void test_environment_loader_defaults()
@@ -85,6 +91,94 @@ namespace
     vix::env::unset("VIX_AGENT_TEST_ALLOW_PROCESS");
     vix::env::unset("VIX_AGENT_TEST_ALLOW_FILE_WRITE");
   }
+
+  void test_config_validator_accepts_default_config()
+  {
+    vix::ai::agent::AgentConfig config;
+
+    auto err = vix::ai::agent::AgentConfigValidator::validate(config);
+
+    assert(!err);
+  }
+
+  void test_config_validator_rejects_empty_provider()
+  {
+    vix::ai::agent::AgentConfig config;
+    config.provider.clear();
+
+    auto err = vix::ai::agent::AgentConfigValidator::validate(config);
+
+    assert(err);
+  }
+
+  void test_config_validator_rejects_empty_model()
+  {
+    vix::ai::agent::AgentConfig config;
+    config.model.clear();
+
+    auto err = vix::ai::agent::AgentConfigValidator::validate(config);
+
+    assert(err);
+  }
+
+  void test_config_validator_rejects_empty_model_url()
+  {
+    vix::ai::agent::AgentConfig config;
+    config.model_url.clear();
+
+    auto err = vix::ai::agent::AgentConfigValidator::validate(config);
+
+    assert(err);
+  }
+
+  void test_config_validator_rejects_zero_timeout()
+  {
+    vix::ai::agent::AgentConfig config;
+    config.timeout_ms = 0;
+
+    auto err = vix::ai::agent::AgentConfigValidator::validate(config);
+
+    assert(err);
+  }
+
+  void test_config_validator_rejects_zero_limits()
+  {
+    vix::ai::agent::AgentConfig config;
+
+    config.max_files = 0;
+    assert(vix::ai::agent::AgentConfigValidator::validate(config));
+
+    config = vix::ai::agent::AgentConfig{};
+    config.max_file_size = 0;
+    assert(vix::ai::agent::AgentConfigValidator::validate(config));
+
+    config = vix::ai::agent::AgentConfig{};
+    config.max_context_chars = 0;
+    assert(vix::ai::agent::AgentConfigValidator::validate(config));
+
+    config = vix::ai::agent::AgentConfig{};
+    config.max_tool_output = 0;
+    assert(vix::ai::agent::AgentConfigValidator::validate(config));
+
+    config = vix::ai::agent::AgentConfig{};
+    config.tool_timeout_ms = 0;
+    assert(vix::ai::agent::AgentConfigValidator::validate(config));
+
+    config = vix::ai::agent::AgentConfig{};
+    config.cache_ttl_ms = 0;
+    assert(vix::ai::agent::AgentConfigValidator::validate(config));
+  }
+
+  void test_config_validator_rejects_process_without_allowed_programs()
+  {
+    vix::ai::agent::AgentConfig config;
+    config.allow_process = true;
+    config.allowed_programs.clear();
+
+    auto err = vix::ai::agent::AgentConfigValidator::validate(config);
+
+    assert(err);
+  }
 }
 
 void test_agent_config()
@@ -92,9 +186,26 @@ void test_agent_config()
   test_default_config();
   test_environment_loader_defaults();
   test_environment_loader_overrides();
+
+  test_config_validator_accepts_default_config();
+  test_config_validator_rejects_empty_provider();
+  test_config_validator_rejects_empty_model();
+  test_config_validator_rejects_empty_model_url();
+  test_config_validator_rejects_zero_timeout();
+  test_config_validator_rejects_zero_limits();
+  test_config_validator_rejects_process_without_allowed_programs();
 }
 
 void test_agent_workspace();
+void test_project_scanner();
+void test_tool_registry();
+void test_agent_run();
+void test_file_scan_policy();
+void test_file_reader();
+void test_command_tool();
+void test_agent_run_store();
+void test_agent_cache();
+void test_agent_public_api();
 
 int main()
 {
@@ -103,6 +214,12 @@ int main()
   test_project_scanner();
   test_tool_registry();
   test_agent_run();
+  test_file_scan_policy();
+  test_file_reader();
+  test_command_tool();
+  test_agent_run_store();
+  test_agent_cache();
+  test_agent_public_api();
 
   std::cout << "vix_ai_agent tests passed\n";
   return 0;

@@ -24,6 +24,7 @@
 #include <vix/ai/agent/model/ModelResponse.hpp>
 #include <vix/fs/EnsureDirectory.hpp>
 #include <vix/fs/WriteText.hpp>
+#include <vix/json/json.hpp>
 
 namespace
 {
@@ -60,6 +61,56 @@ namespace
 
       return response;
     }
+  };
+
+  class ToolCallingFakeProvider final : public vix::ai::agent::ModelProvider
+  {
+  public:
+    [[nodiscard]] std::string_view name() const noexcept override
+    {
+      return "fake";
+    }
+
+    [[nodiscard]] bool local() const noexcept override
+    {
+      return true;
+    }
+
+    [[nodiscard]] vix::ai::agent::AgentResult<bool> available() const override
+    {
+      return true;
+    }
+
+    [[nodiscard]] vix::ai::agent::AgentResult<vix::ai::agent::ModelResponse> generate(
+        const vix::ai::agent::ModelRequest &request) override
+    {
+      ++calls_;
+
+      vix::ai::agent::ModelResponse response;
+      response.model = request.model.empty() ? "fake-model" : request.model;
+      response.provider = "fake";
+      response.status = vix::ai::agent::ModelResponseStatus::Completed;
+      response.duration_ms = 1;
+
+      if (calls_ == 1)
+      {
+        vix::ai::agent::ToolCall call;
+        call.id = "tool_1";
+        call.name = "file.read";
+        call.arguments = vix::json::Json::object();
+        call.arguments["path"] = "main.cpp";
+
+        response.tool_calls.push_back(std::move(call));
+        response.text = "I need to read a file.";
+        return response;
+      }
+
+      response.text = "final answer after tool";
+      return response;
+    }
+
+  private:
+    int calls_{0};
   };
 
   void test_agent_rejects_empty_input()
@@ -158,6 +209,41 @@ namespace
     auto response = agent.run(request);
     assert(!response);
   }
+
+  void test_agent_runs_tool_loop_with_fake_provider()
+  {
+    vix::fs::ensure_directory(".vix-agent-tool-loop-test");
+    vix::fs::write_text(
+        ".vix-agent-tool-loop-test/main.cpp",
+        "int main() { return 0; }\n");
+
+    vix::ai::agent::AgentConfig config;
+    config.provider = "fake";
+    config.model = "fake-model";
+    config.allow_file_read = true;
+    config.allow_process = false;
+    config.allow_file_write = false;
+    config.max_tool_rounds = 3;
+
+    auto provider = std::make_shared<ToolCallingFakeProvider>();
+    vix::ai::agent::Agent agent(config, provider);
+
+    vix::ai::agent::AgentRequest request;
+    request.workspace = ".vix-agent-tool-loop-test";
+    request.input = "Read main.cpp and explain it.";
+    request.allow_tools = true;
+    request.allow_file_read = true;
+    request.allow_process = false;
+    request.allow_file_write = false;
+
+    auto response = agent.run(request);
+
+    assert(response);
+    assert(response.value().text == "final answer after tool");
+    assert(response.value().tools.size() == 1);
+    assert(response.value().tools[0].name == "file.read");
+    assert(response.value().tools[0].ok);
+  }
 }
 
 void test_agent_run()
@@ -166,4 +252,5 @@ void test_agent_run()
   test_agent_runs_with_fake_provider();
   test_agent_rejects_process_when_disabled();
   test_agent_rejects_file_write_when_disabled();
+  test_agent_runs_tool_loop_with_fake_provider();
 }

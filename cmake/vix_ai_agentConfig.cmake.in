@@ -11,5 +11,6 @@ find_dependency(vix_env CONFIG)
 find_dependency(vix_time CONFIG)
 find_dependency(vix_crypto CONFIG)
 find_dependency(vix_log CONFIG)
+find_dependency(vix_cache CONFIG)
 
 include("${CMAKE_CURRENT_LIST_DIR}/vix_ai_agentTargets.cmake")

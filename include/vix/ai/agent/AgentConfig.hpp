@@ -17,6 +17,8 @@
 #define VIX_AI_AGENT_AGENTCONFIG_HPP
 
 #include <string>
+#include <string>
+#include <vector>
 
 namespace vix::ai::agent
 {
@@ -105,6 +107,30 @@ namespace vix::ai::agent
     unsigned max_tool_output{20'000};
 
     /**
+     * @brief Programs allowed for command.run.
+     *
+     * Empty means no local program is allowed.
+     */
+    std::vector<std::string> allowed_programs{
+        "vix",
+        "cmake",
+        "ninja",
+        "git",
+        "ls",
+        "cat",
+        "echo"};
+
+    /**
+     * @brief Maximum execution time for a tool, in milliseconds.
+     */
+    unsigned tool_timeout_ms{30'000};
+
+    /**
+     * @brief Maximum number of tool execution rounds per agent run.
+     */
+    unsigned max_tool_rounds{3};
+
+    /**
      * @brief Maximum context size prepared for a model request.
      */
     unsigned max_context_chars{120'000};
@@ -135,6 +161,11 @@ namespace vix::ai::agent
      * @brief Whether the agent should use cache when possible.
      */
     bool use_cache{true};
+
+    /**
+     * @brief Agent model response cache TTL in milliseconds.
+     */
+    unsigned cache_ttl_ms{5 * 60 * 1000};
 
     /**
      * @brief Whether the agent should persist memory.

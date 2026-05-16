@@ -36,6 +36,7 @@
 #   - vix::time
 #   - vix::crypto
 #   - vix::log
+#   - vix::cache
 #
 # Installation/Export:
 #   - Umbrella build exports into: VixTargets
@@ -75,6 +76,7 @@ option(VIX_AI_AGENT_FETCH_ENV "Auto-fetch vix::env if missing" ON)
 option(VIX_AI_AGENT_FETCH_TIME "Auto-fetch vix::time if missing" ON)
 option(VIX_AI_AGENT_FETCH_CRYPTO "Auto-fetch vix::crypto if missing" ON)
 option(VIX_AI_AGENT_FETCH_LOG "Auto-fetch vix::log if missing" ON)
+option(VIX_AI_AGENT_FETCH_CACHE "Auto-fetch vix::cache if missing" ON)
 
 # --------------------------------------------------------------------
 # Export set selection
@@ -102,6 +104,7 @@ if(DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD)
   set(VIX_AI_AGENT_FETCH_TIME OFF CACHE BOOL "Auto-fetch vix::time if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_CRYPTO OFF CACHE BOOL "Auto-fetch vix::crypto if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_LOG OFF CACHE BOOL "Auto-fetch vix::log if missing" FORCE)
+  set(VIX_AI_AGENT_FETCH_CACHE OFF CACHE BOOL "Auto-fetch vix::cache if missing" FORCE)
 endif()
 
 # --------------------------------------------------------------------
@@ -241,6 +244,15 @@ vix_ai_agent_require_dependency(
   v0.1.0
 )
 
+vix_ai_agent_require_dependency(
+  vix::cache
+  vix_cache
+  cache
+  VIX_AI_AGENT_FETCH_CACHE
+  https://github.com/vixcpp/cache.git
+  v0.1.0
+)
+
 # --------------------------------------------------------------------
 # Sources
 # --------------------------------------------------------------------
@@ -263,6 +275,8 @@ set(VIX_AI_AGENT_SOURCES
   src/tools/CommandTool.cpp
 
   src/model/OllamaProvider.cpp
+  src/AgentConfigValidator.cpp
+  src/AgentRunStore.cpp
 )
 
 # --------------------------------------------------------------------
@@ -296,6 +310,7 @@ target_link_libraries(vix_ai_agent
     vix::time
     vix::crypto
     vix::log
+    vix::cache
 )
 
 set_target_properties(vix_ai_agent
@@ -423,6 +438,12 @@ if(VIX_AI_AGENT_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests")
     tests/ProjectScannerTest.cpp
     tests/ToolRegistryTest.cpp
     tests/AgentRunTest.cpp
+    tests/FileScanPolicyTest.cpp
+    tests/FileReaderTest.cpp
+    tests/CommandToolTest.cpp
+    tests/AgentRunStoreTest.cpp
+    tests/AgentCacheTest.cpp
+    tests/AgentPublicApiTest.cpp
   )
 
   target_link_libraries(vix_ai_agent_tests
@@ -452,6 +473,7 @@ message(STATUS "Env target:     vix::env")
 message(STATUS "Time target:    vix::time")
 message(STATUS "Crypto target:  vix::crypto")
 message(STATUS "Log target:     vix::log")
+message(STATUS "Cache target:   vix::cache")
 message(STATUS "Install/export: ${VIX_AI_AGENT_ENABLE_INSTALL}")
 message(STATUS "Include dir: ${CMAKE_CURRENT_SOURCE_DIR}/include")
 message(STATUS "Build tests: ${VIX_AI_AGENT_BUILD_TESTS}")
