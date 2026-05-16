@@ -100,6 +100,9 @@ int main()
 {
   test_agent_config();
   test_agent_workspace();
+  test_project_scanner();
+  test_tool_registry();
+  test_agent_run();
 
   std::cout << "vix_ai_agent tests passed\n";
   return 0;

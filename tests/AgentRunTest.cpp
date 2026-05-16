@@ -160,9 +160,6 @@ namespace
   }
 }
 
-void test_project_scanner();
-void test_tool_registry();
-
 void test_agent_run()
 {
   test_agent_rejects_empty_input();
@@ -170,15 +167,3 @@ void test_agent_run()
   test_agent_rejects_process_when_disabled();
   test_agent_rejects_file_write_when_disabled();
 }
-
-struct AgentRunTestAutoRegister
-{
-  AgentRunTestAutoRegister()
-  {
-    test_project_scanner();
-    test_tool_registry();
-    test_agent_run();
-  }
-};
-
-static AgentRunTestAutoRegister agent_run_test_auto_register;
