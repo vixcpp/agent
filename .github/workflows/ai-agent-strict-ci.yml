@@ -1,0 +1,637 @@
+name: AI Agent Strict CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - release/**
+    paths:
+      - ".github/workflows/ai-agent-strict-ci.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "include/**"
+      - "src/**"
+      - "tests/**"
+      - "examples/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "vix.json"
+
+  pull_request:
+    branches:
+      - main
+      - master
+      - dev
+      - release/**
+    paths:
+      - ".github/workflows/ai-agent-strict-ci.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "include/**"
+      - "src/**"
+      - "tests/**"
+      - "examples/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "vix.json"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUILD_JOBS: 2
+  VIX_GIT_BRANCH: dev
+
+jobs:
+  build:
+    name: Build AI Agent (${{ matrix.compiler }}, tests=${{ matrix.tests }}, examples=${{ matrix.examples }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gcc
+          - clang
+        tests:
+          - ON
+          - OFF
+        examples:
+          - ON
+          - OFF
+
+    steps:
+      - name: Checkout ai_agent repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            clang \
+            g++ \
+            pkg-config \
+            git \
+            curl \
+            ca-certificates \
+            libasio-dev \
+            libssl-dev \
+            nlohmann-json3-dev \
+            libspdlog-dev \
+            libfmt-dev
+
+          test -f /usr/include/asio.hpp || (echo "::error::System Asio header not found"; exit 1)
+
+      - name: Select compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+          else
+            echo "CC=gcc" >> "$GITHUB_ENV"
+            echo "CXX=g++" >> "$GITHUB_ENV"
+          fi
+
+      - name: Fetch sibling dependencies
+        run: |
+          set -euxo pipefail
+
+          rm -rf \
+            ../error \
+            ../path \
+            ../fs \
+            ../env \
+            ../async \
+            ../process \
+            ../net \
+            ../json \
+            ../utils \
+            ../crypto \
+            ../log \
+            ../time \
+            ../cache
+
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/error.git ../error
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/path.git ../path
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/fs.git ../fs
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/env.git ../env
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" --recurse-submodules https://github.com/vixcpp/async.git ../async
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/process.git ../process
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/net.git ../net
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/json.git ../json
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/utils.git ../utils
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/crypto.git ../crypto
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/log.git ../log
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/time.git ../time
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/cache.git ../cache
+
+          git -C ../async submodule update --init --recursive --depth 1 || true
+
+      - name: Prepare Asio for async
+        run: |
+          set -euxo pipefail
+
+          mkdir -p ../async/third_party/asio
+          rm -rf ../async/third_party/asio/include
+          mkdir -p ../async/third_party/asio/include
+          cp -r /usr/include/asio* ../async/third_party/asio/include/ || true
+
+          test -f ../async/third_party/asio/include/asio.hpp
+
+      - name: Verify required sibling dependencies
+        run: |
+          set -euxo pipefail
+
+          test -f ../error/CMakeLists.txt
+          test -f ../path/CMakeLists.txt
+          test -f ../fs/CMakeLists.txt
+          test -f ../env/CMakeLists.txt
+          test -f ../async/CMakeLists.txt
+          test -f ../process/CMakeLists.txt
+          test -f ../net/CMakeLists.txt
+          test -f ../json/CMakeLists.txt
+          test -f ../utils/CMakeLists.txt
+          test -f ../crypto/CMakeLists.txt
+          test -f ../log/CMakeLists.txt
+          test -f ../time/CMakeLists.txt
+          test -f ../cache/CMakeLists.txt
+
+          test -f ../error/include/vix/error/Result.hpp
+          test -f ../json/include/vix/json/Simple.hpp
+          test -f ../async/third_party/asio/include/asio.hpp
+
+      - name: Export dependency include paths
+        run: |
+          EXTRA_PATHS="$GITHUB_WORKSPACE/../error/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../path/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../fs/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../env/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../async/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../process/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../net/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../json/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../utils/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../crypto/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../log/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../time/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../cache/include"
+
+          echo "CPATH=$EXTRA_PATHS${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
+          echo "CPLUS_INCLUDE_PATH=$EXTRA_PATHS${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_BUILD_TESTS=${{ matrix.tests }} \
+            -DVIX_AI_AGENT_BUILD_EXAMPLES=${{ matrix.examples }} \
+            -DVIX_AI_AGENT_FETCH_ERROR=OFF \
+            -DVIX_AI_AGENT_FETCH_JSON=OFF \
+            -DVIX_AI_AGENT_FETCH_FS=OFF \
+            -DVIX_AI_AGENT_FETCH_PATH=OFF \
+            -DVIX_AI_AGENT_FETCH_PROCESS=OFF \
+            -DVIX_AI_AGENT_FETCH_NET=OFF \
+            -DVIX_AI_AGENT_FETCH_ENV=OFF \
+            -DVIX_AI_AGENT_FETCH_TIME=OFF \
+            -DVIX_AI_AGENT_FETCH_CRYPTO=OFF \
+            -DVIX_AI_AGENT_FETCH_LOG=OFF \
+            -DVIX_AI_AGENT_FETCH_CACHE=OFF \
+            -DVIX_PROCESS_BUILD_TESTS=OFF \
+            -DVIX_NET_BUILD_TESTS=OFF \
+            -DVIX_NET_FETCH_ERROR=OFF \
+            -DVIX_NET_FETCH_PROCESS=OFF \
+            -DVIX_LOG_FETCH_UTILS=OFF \
+            -DVIX_LOG_BUILD_TESTS=OFF \
+            -DVIX_CRYPTO_FETCH_UTILS=OFF \
+            -DVIX_TIME_BUILD_TESTS=OFF \
+            -DVIX_TIME_BUILD_BENCH=OFF \
+            -DVIX_CACHE_BUILD_TESTS=OFF
+
+      - name: Build
+        run: |
+          cmake --build build -j"${BUILD_JOBS}"
+
+      - name: Run tests
+        if: matrix.tests == 'ON'
+        run: |
+          ctest --test-dir build --output-on-failure --timeout 90
+
+      - name: Print artifacts
+        run: |
+          find build -maxdepth 6 -type f | sort
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ai_agent repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            clang \
+            g++ \
+            cppcheck \
+            clang-tidy \
+            pkg-config \
+            git \
+            curl \
+            ca-certificates \
+            libasio-dev \
+            libssl-dev \
+            nlohmann-json3-dev \
+            libspdlog-dev \
+            libfmt-dev
+
+      - name: Fetch sibling dependencies
+        run: |
+          set -euxo pipefail
+
+          rm -rf \
+            ../error \
+            ../path \
+            ../fs \
+            ../env \
+            ../async \
+            ../process \
+            ../net \
+            ../json \
+            ../utils \
+            ../crypto \
+            ../log \
+            ../time \
+            ../cache
+
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/error.git ../error
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/path.git ../path
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/fs.git ../fs
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/env.git ../env
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" --recurse-submodules https://github.com/vixcpp/async.git ../async
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/process.git ../process
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/net.git ../net
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/json.git ../json
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/utils.git ../utils
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/crypto.git ../crypto
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/log.git ../log
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/time.git ../time
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/cache.git ../cache
+
+          git -C ../async submodule update --init --recursive --depth 1 || true
+
+      - name: Prepare Asio for async
+        run: |
+          set -euxo pipefail
+
+          mkdir -p ../async/third_party/asio
+          rm -rf ../async/third_party/asio/include
+          mkdir -p ../async/third_party/asio/include
+          cp -r /usr/include/asio* ../async/third_party/asio/include/ || true
+
+          test -f ../async/third_party/asio/include/asio.hpp
+
+      - name: Configure for analysis
+        run: |
+          cmake -S . -B build-analyze -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_BUILD_TESTS=OFF \
+            -DVIX_AI_AGENT_BUILD_EXAMPLES=ON \
+            -DVIX_AI_AGENT_FETCH_ERROR=OFF \
+            -DVIX_AI_AGENT_FETCH_JSON=OFF \
+            -DVIX_AI_AGENT_FETCH_FS=OFF \
+            -DVIX_AI_AGENT_FETCH_PATH=OFF \
+            -DVIX_AI_AGENT_FETCH_PROCESS=OFF \
+            -DVIX_AI_AGENT_FETCH_NET=OFF \
+            -DVIX_AI_AGENT_FETCH_ENV=OFF \
+            -DVIX_AI_AGENT_FETCH_TIME=OFF \
+            -DVIX_AI_AGENT_FETCH_CRYPTO=OFF \
+            -DVIX_AI_AGENT_FETCH_LOG=OFF \
+            -DVIX_AI_AGENT_FETCH_CACHE=OFF \
+            -DVIX_PROCESS_BUILD_TESTS=OFF \
+            -DVIX_NET_BUILD_TESTS=OFF \
+            -DVIX_NET_FETCH_ERROR=OFF \
+            -DVIX_NET_FETCH_PROCESS=OFF \
+            -DVIX_LOG_FETCH_UTILS=OFF \
+            -DVIX_LOG_BUILD_TESTS=OFF \
+            -DVIX_CRYPTO_FETCH_UTILS=OFF \
+            -DVIX_TIME_BUILD_TESTS=OFF \
+            -DVIX_TIME_BUILD_BENCH=OFF \
+            -DVIX_CACHE_BUILD_TESTS=OFF
+
+      - name: Run clang-tidy
+        run: |
+          set +e
+          find src examples tests -name '*.cpp' -print0 | xargs -0 -r -n1 -P2 clang-tidy -p build-analyze
+          exit 0
+
+      - name: Run cppcheck
+        run: |
+          set +e
+          cppcheck \
+            --enable=all \
+            --std=c++20 \
+            --inconclusive \
+            --quiet \
+            --suppress=missingIncludeSystem \
+            include/ src/ examples/ tests/
+          exit 0
+
+  install-check:
+    name: Install AI Agent
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ai_agent repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            g++ \
+            pkg-config \
+            git \
+            curl \
+            ca-certificates \
+            libasio-dev \
+            libssl-dev \
+            nlohmann-json3-dev \
+            libspdlog-dev \
+            libfmt-dev
+
+      - name: Fetch sibling dependencies
+        run: |
+          set -euxo pipefail
+
+          rm -rf \
+            ../error \
+            ../path \
+            ../fs \
+            ../env \
+            ../async \
+            ../process \
+            ../net \
+            ../json \
+            ../utils \
+            ../crypto \
+            ../log \
+            ../time \
+            ../cache
+
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/error.git ../error
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/path.git ../path
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/fs.git ../fs
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/env.git ../env
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" --recurse-submodules https://github.com/vixcpp/async.git ../async
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/process.git ../process
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/net.git ../net
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/json.git ../json
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/utils.git ../utils
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/crypto.git ../crypto
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/log.git ../log
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/time.git ../time
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/cache.git ../cache
+
+          git -C ../async submodule update --init --recursive --depth 1 || true
+
+      - name: Prepare Asio for async
+        run: |
+          set -euxo pipefail
+
+          mkdir -p ../async/third_party/asio
+          rm -rf ../async/third_party/asio/include
+          mkdir -p ../async/third_party/asio/include
+          cp -r /usr/include/asio* ../async/third_party/asio/include/ || true
+
+          test -f ../async/third_party/asio/include/asio.hpp
+
+      - name: Configure installable build
+        run: |
+          cmake -S . -B build-install -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_BUILD_TESTS=OFF \
+            -DVIX_AI_AGENT_BUILD_EXAMPLES=OFF \
+            -DVIX_AI_AGENT_FETCH_ERROR=OFF \
+            -DVIX_AI_AGENT_FETCH_JSON=OFF \
+            -DVIX_AI_AGENT_FETCH_FS=OFF \
+            -DVIX_AI_AGENT_FETCH_PATH=OFF \
+            -DVIX_AI_AGENT_FETCH_PROCESS=OFF \
+            -DVIX_AI_AGENT_FETCH_NET=OFF \
+            -DVIX_AI_AGENT_FETCH_ENV=OFF \
+            -DVIX_AI_AGENT_FETCH_TIME=OFF \
+            -DVIX_AI_AGENT_FETCH_CRYPTO=OFF \
+            -DVIX_AI_AGENT_FETCH_LOG=OFF \
+            -DVIX_AI_AGENT_FETCH_CACHE=OFF \
+            -DVIX_PROCESS_BUILD_TESTS=OFF \
+            -DVIX_NET_BUILD_TESTS=OFF \
+            -DVIX_NET_FETCH_ERROR=OFF \
+            -DVIX_NET_FETCH_PROCESS=OFF \
+            -DVIX_LOG_FETCH_UTILS=OFF \
+            -DVIX_LOG_BUILD_TESTS=OFF \
+            -DVIX_CRYPTO_FETCH_UTILS=OFF \
+            -DVIX_TIME_BUILD_TESTS=OFF \
+            -DVIX_TIME_BUILD_BENCH=OFF \
+            -DVIX_CACHE_BUILD_TESTS=OFF \
+            -DCMAKE_INSTALL_PREFIX="${PWD}/.ci-install"
+
+      - name: Build installable package
+        run: |
+          cmake --build build-install -j"${BUILD_JOBS}"
+
+      - name: Install package
+        run: |
+          cmake --install build-install
+
+      - name: Verify install tree
+        run: |
+          find .ci-install -maxdepth 8 -type f | sort
+          test -d .ci-install/include/vix/ai
+          test -d .ci-install/include/vix/agent
+          test -f .ci-install/lib/libvix_ai_agent.a
+
+  config-coverage:
+    name: Configuration Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ai_agent repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            g++ \
+            pkg-config \
+            git \
+            curl \
+            ca-certificates \
+            libasio-dev \
+            libssl-dev \
+            nlohmann-json3-dev \
+            libspdlog-dev \
+            libfmt-dev
+
+      - name: Fetch sibling dependencies
+        run: |
+          set -euxo pipefail
+
+          rm -rf \
+            ../error \
+            ../path \
+            ../fs \
+            ../env \
+            ../async \
+            ../process \
+            ../net \
+            ../json \
+            ../utils \
+            ../crypto \
+            ../log \
+            ../time \
+            ../cache
+
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/error.git ../error
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/path.git ../path
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/fs.git ../fs
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/env.git ../env
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" --recurse-submodules https://github.com/vixcpp/async.git ../async
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/process.git ../process
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/net.git ../net
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/json.git ../json
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/utils.git ../utils
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/crypto.git ../crypto
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/log.git ../log
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/time.git ../time
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/cache.git ../cache
+
+          git -C ../async submodule update --init --recursive --depth 1 || true
+
+      - name: Prepare Asio for async
+        run: |
+          set -euxo pipefail
+
+          mkdir -p ../async/third_party/asio
+          rm -rf ../async/third_party/asio/include
+          mkdir -p ../async/third_party/asio/include
+          cp -r /usr/include/asio* ../async/third_party/asio/include/ || true
+
+          test -f ../async/third_party/asio/include/asio.hpp
+
+      - name: Configure release library only
+        run: |
+          cmake -S . -B build-release-lib -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_BUILD_TESTS=OFF \
+            -DVIX_AI_AGENT_BUILD_EXAMPLES=OFF \
+            -DVIX_AI_AGENT_FETCH_ERROR=OFF \
+            -DVIX_AI_AGENT_FETCH_JSON=OFF \
+            -DVIX_AI_AGENT_FETCH_FS=OFF \
+            -DVIX_AI_AGENT_FETCH_PATH=OFF \
+            -DVIX_AI_AGENT_FETCH_PROCESS=OFF \
+            -DVIX_AI_AGENT_FETCH_NET=OFF \
+            -DVIX_AI_AGENT_FETCH_ENV=OFF \
+            -DVIX_AI_AGENT_FETCH_TIME=OFF \
+            -DVIX_AI_AGENT_FETCH_CRYPTO=OFF \
+            -DVIX_AI_AGENT_FETCH_LOG=OFF \
+            -DVIX_AI_AGENT_FETCH_CACHE=OFF \
+            -DVIX_PROCESS_BUILD_TESTS=OFF \
+            -DVIX_NET_BUILD_TESTS=OFF \
+            -DVIX_NET_FETCH_ERROR=OFF \
+            -DVIX_NET_FETCH_PROCESS=OFF \
+            -DVIX_LOG_FETCH_UTILS=OFF \
+            -DVIX_LOG_BUILD_TESTS=OFF \
+            -DVIX_CRYPTO_FETCH_UTILS=OFF \
+            -DVIX_TIME_BUILD_TESTS=OFF \
+            -DVIX_TIME_BUILD_BENCH=OFF \
+            -DVIX_CACHE_BUILD_TESTS=OFF
+
+      - name: Build release library only
+        run: |
+          cmake --build build-release-lib -j"${BUILD_JOBS}"
+
+      - name: Configure release with examples
+        run: |
+          cmake -S . -B build-release-examples -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_BUILD_TESTS=OFF \
+            -DVIX_AI_AGENT_BUILD_EXAMPLES=ON \
+            -DVIX_AI_AGENT_FETCH_ERROR=OFF \
+            -DVIX_AI_AGENT_FETCH_JSON=OFF \
+            -DVIX_AI_AGENT_FETCH_FS=OFF \
+            -DVIX_AI_AGENT_FETCH_PATH=OFF \
+            -DVIX_AI_AGENT_FETCH_PROCESS=OFF \
+            -DVIX_AI_AGENT_FETCH_NET=OFF \
+            -DVIX_AI_AGENT_FETCH_ENV=OFF \
+            -DVIX_AI_AGENT_FETCH_TIME=OFF \
+            -DVIX_AI_AGENT_FETCH_CRYPTO=OFF \
+            -DVIX_AI_AGENT_FETCH_LOG=OFF \
+            -DVIX_AI_AGENT_FETCH_CACHE=OFF \
+            -DVIX_PROCESS_BUILD_TESTS=OFF \
+            -DVIX_NET_BUILD_TESTS=OFF \
+            -DVIX_NET_FETCH_ERROR=OFF \
+            -DVIX_NET_FETCH_PROCESS=OFF \
+            -DVIX_LOG_FETCH_UTILS=OFF \
+            -DVIX_LOG_BUILD_TESTS=OFF \
+            -DVIX_CRYPTO_FETCH_UTILS=OFF \
+            -DVIX_TIME_BUILD_TESTS=OFF \
+            -DVIX_TIME_BUILD_BENCH=OFF \
+            -DVIX_CACHE_BUILD_TESTS=OFF
+
+      - name: Build release with examples
+        run: |
+          cmake --build build-release-examples -j"${BUILD_JOBS}"
+
+  summary:
+    name: AI Agent Strict CI Summary
+    needs:
+      - build
+      - static-analysis
+      - install-check
+      - config-coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print summary
+        run: |
+          echo "AI Agent strict CI completed."
+          echo "- gcc and clang builds"
+          echo "- tests and examples configuration coverage"
+          echo "- static analysis"
+          echo "- install tree check"
+          echo "- release library and examples builds"
