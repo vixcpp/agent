@@ -78,6 +78,7 @@ option(VIX_AI_AGENT_FETCH_TIME "Auto-fetch vix::time if missing" ON)
 option(VIX_AI_AGENT_FETCH_CRYPTO "Auto-fetch vix::crypto if missing" ON)
 option(VIX_AI_AGENT_FETCH_LOG "Auto-fetch vix::log if missing" ON)
 option(VIX_AI_AGENT_FETCH_CACHE "Auto-fetch vix::cache if missing" ON)
+option(VIX_AI_AGENT_FETCH_IO "Auto-fetch vix::io if missing for examples" ON)
 
 # --------------------------------------------------------------------
 # Export set selection
@@ -107,8 +108,8 @@ if(DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD)
   set(VIX_AI_AGENT_FETCH_CRYPTO OFF CACHE BOOL "Auto-fetch vix::crypto if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_LOG OFF CACHE BOOL "Auto-fetch vix::log if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_CACHE OFF CACHE BOOL "Auto-fetch vix::cache if missing" FORCE)
+  set(VIX_AI_AGENT_FETCH_IO OFF CACHE BOOL "Auto-fetch vix::io if missing for examples" FORCE)
 endif()
-
 # --------------------------------------------------------------------
 # Dependency helper
 # --------------------------------------------------------------------
@@ -154,6 +155,52 @@ function(vix_ai_agent_require_dependency target package_name sibling_dir fetch_o
     message(FATAL_ERROR
       "[ai_agent] ${target} not found. Install ${package_name}, provide the target, "
       "add sibling module, or enable ${fetch_option}=ON."
+    )
+  endif()
+endfunction()
+
+function(vix_ai_agent_require_io_for_examples)
+  if(TARGET vix::io)
+    return()
+  endif()
+
+  if(DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD)
+    message(FATAL_ERROR "[ai_agent/examples] Umbrella build: vix::io must be provided before ai_agent examples.")
+  endif()
+
+  if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../io/CMakeLists.txt")
+    message(STATUS "[ai_agent/examples] Adding io from sibling: ../io")
+
+    add_subdirectory(
+      "${CMAKE_CURRENT_LIST_DIR}/../io"
+      "${CMAKE_CURRENT_BINARY_DIR}/deps/io"
+      EXCLUDE_FROM_ALL
+    )
+  else()
+    find_package(vix_io CONFIG QUIET)
+  endif()
+
+  if(TARGET vix::io)
+    return()
+  endif()
+
+  if(VIX_AI_AGENT_FETCH_IO)
+    include(FetchContent)
+
+    message(STATUS "[ai_agent/examples] Fetching vix::io via FetchContent")
+
+    FetchContent_Declare(vix_io
+      GIT_REPOSITORY https://github.com/vixcpp/io.git
+      GIT_TAG        v0.1.0
+    )
+
+    FetchContent_MakeAvailable(vix_io)
+  endif()
+
+  if(NOT TARGET vix::io)
+    message(FATAL_ERROR
+      "[ai_agent/examples] vix::io not found. Examples include <vix/print.hpp>, "
+      "so they require vix::io."
     )
   endif()
 endfunction()
@@ -411,6 +458,8 @@ endif()
 # Examples
 # --------------------------------------------------------------------
 if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples")
+  vix_ai_agent_require_io_for_examples()
+
   add_executable(vix_ai_agent_basic_agent
     examples/basic_agent.cpp
   )
@@ -418,6 +467,7 @@ if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples"
   target_link_libraries(vix_ai_agent_basic_agent
     PRIVATE
       vix::ai_agent
+      vix::io
   )
 
   add_executable(vix_ai_agent_scan_project
@@ -427,6 +477,7 @@ if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples"
   target_link_libraries(vix_ai_agent_scan_project
     PRIVATE
       vix::ai_agent
+      vix::io
   )
 
   add_executable(vix_ai_agent_ollama_agent
@@ -436,6 +487,7 @@ if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples"
   target_link_libraries(vix_ai_agent_ollama_agent
     PRIVATE
       vix::ai_agent
+      vix::io
   )
 
   add_executable(vix_ai_agent_with_cache
@@ -445,6 +497,7 @@ if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples"
   target_link_libraries(vix_ai_agent_with_cache
     PRIVATE
       vix::ai_agent
+      vix::io
   )
 
   add_executable(vix_ai_agent_with_command_tool
@@ -454,6 +507,7 @@ if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples"
   target_link_libraries(vix_ai_agent_with_command_tool
     PRIVATE
       vix::ai_agent
+      vix::io
   )
 
   add_executable(vix_ai_agent_custom_provider
@@ -463,6 +517,7 @@ if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples"
   target_link_libraries(vix_ai_agent_custom_provider
     PRIVATE
       vix::ai_agent
+      vix::io
   )
 
   add_executable(vix_ai_agent_public_api
@@ -472,6 +527,7 @@ if(VIX_AI_AGENT_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples"
   target_link_libraries(vix_ai_agent_public_api
     PRIVATE
       vix::ai_agent
+      vix::io
   )
 endif()
 # --------------------------------------------------------------------
