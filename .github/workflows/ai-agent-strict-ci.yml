@@ -118,8 +118,8 @@ jobs:
             ../crypto \
             ../log \
             ../time \
-            ../cache
-
+            ../cache \
+            ../io
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/error.git ../error
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/path.git ../path
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/fs.git ../fs
@@ -133,6 +133,7 @@ jobs:
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/log.git ../log
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/time.git ../time
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/cache.git ../cache
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/io.git ../io
 
           git -C ../async submodule update --init --recursive --depth 1 || true
 
