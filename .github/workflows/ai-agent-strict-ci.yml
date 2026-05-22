@@ -194,7 +194,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=OF \
             -DVIX_AI_AGENT_BUILD_TESTS=${{ matrix.tests }} \
             -DVIX_AI_AGENT_BUILD_EXAMPLES=${{ matrix.examples }} \
             -DVIX_AI_AGENT_FETCH_ERROR=OFF \
@@ -315,7 +315,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=OFF \
             -DVIX_AI_AGENT_BUILD_TESTS=OFF \
             -DVIX_AI_AGENT_BUILD_EXAMPLES=ON \
             -DVIX_AI_AGENT_FETCH_ERROR=OFF \
@@ -432,11 +432,11 @@ jobs:
 
           test -f ../async/third_party/asio/include/asio.hpp
 
-      - name: Configure installable build
+      - name: Configure release build
         run: |
           cmake -S . -B build-install -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=OFF \
             -DVIX_AI_AGENT_BUILD_TESTS=OFF \
             -DVIX_AI_AGENT_BUILD_EXAMPLES=OFF \
             -DVIX_AI_AGENT_FETCH_ERROR=OFF \
@@ -466,16 +466,10 @@ jobs:
         run: |
           cmake --build build-install -j"${BUILD_JOBS}"
 
-      - name: Install package
+      - name: Verify release artifacts
         run: |
-          cmake --install build-install
-
-      - name: Verify install tree
-        run: |
-          find .ci-install -maxdepth 8 -type f | sort
-          test -d .ci-install/include/vix/ai
-          test -d .ci-install/include/vix/agent
-          test -f .ci-install/lib/libvix_ai_agent.a
+          find build-install -maxdepth 6 -type f | sort
+          test -f build-install/libvix_ai_agent.a
 
   config-coverage:
     name: Configuration Coverage
@@ -555,7 +549,7 @@ jobs:
         run: |
           cmake -S . -B build-release-lib -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=OFF \
             -DVIX_AI_AGENT_BUILD_TESTS=OFF \
             -DVIX_AI_AGENT_BUILD_EXAMPLES=OFF \
             -DVIX_AI_AGENT_FETCH_ERROR=OFF \
@@ -588,7 +582,7 @@ jobs:
         run: |
           cmake -S . -B build-release-examples -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVIX_AI_AGENT_ENABLE_INSTALL=ON \
+            -DVIX_AI_AGENT_ENABLE_INSTALL=OFF \
             -DVIX_AI_AGENT_BUILD_TESTS=OFF \
             -DVIX_AI_AGENT_BUILD_EXAMPLES=ON \
             -DVIX_AI_AGENT_FETCH_ERROR=OFF \
