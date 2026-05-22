@@ -164,6 +164,7 @@ jobs:
           test -f ../log/CMakeLists.txt
           test -f ../time/CMakeLists.txt
           test -f ../cache/CMakeLists.txt
+          test -f ../io/include/vix/print.hpp
 
           test -f ../error/include/vix/error/Result.hpp
           test -f ../json/include/vix/json/Simple.hpp
@@ -184,6 +185,7 @@ jobs:
           EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../log/include"
           EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../time/include"
           EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../cache/include"
+          EXTRA_PATHS="$EXTRA_PATHS:$GITHUB_WORKSPACE/../io/include"
 
           echo "CPATH=$EXTRA_PATHS${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
           echo "CPLUS_INCLUDE_PATH=$EXTRA_PATHS${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}" >> "$GITHUB_ENV"
@@ -208,6 +210,9 @@ jobs:
             -DVIX_AI_AGENT_FETCH_CRYPTO=OFF \
             -DVIX_AI_AGENT_FETCH_LOG=OFF \
             -DVIX_AI_AGENT_FETCH_CACHE=OFF \
+            -DVIX_AI_AGENT_FETCH_IO=OFF \
+            -DVIX_IO_BUILD_TESTS=OFF \
+            -DVIX_IO_FETCH_ERROR=OFF \
             -DVIX_PROCESS_BUILD_TESTS=OFF \
             -DVIX_NET_BUILD_TESTS=OFF \
             -DVIX_NET_FETCH_ERROR=OFF \
@@ -280,7 +285,8 @@ jobs:
             ../crypto \
             ../log \
             ../time \
-            ../cache
+            ../cache \
+            ../io
 
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/error.git ../error
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/path.git ../path
@@ -295,6 +301,7 @@ jobs:
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/log.git ../log
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/time.git ../time
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/cache.git ../cache
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/io.git ../io
 
           git -C ../async submodule update --init --recursive --depth 1 || true
 
@@ -516,7 +523,8 @@ jobs:
             ../crypto \
             ../log \
             ../time \
-            ../cache
+            ../cache \
+            ../io
 
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/error.git ../error
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/path.git ../path
@@ -531,6 +539,7 @@ jobs:
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/log.git ../log
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/time.git ../time
           git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/cache.git ../cache
+          git clone --depth 1 --branch "${VIX_GIT_BRANCH}" https://github.com/vixcpp/io.git ../io
 
           git -C ../async submodule update --init --recursive --depth 1 || true
 
@@ -596,6 +605,9 @@ jobs:
             -DVIX_AI_AGENT_FETCH_CRYPTO=OFF \
             -DVIX_AI_AGENT_FETCH_LOG=OFF \
             -DVIX_AI_AGENT_FETCH_CACHE=OFF \
+            -DVIX_AI_AGENT_FETCH_IO=OFF \
+            -DVIX_IO_BUILD_TESTS=OFF \
+            -DVIX_IO_FETCH_ERROR=OFF \
             -DVIX_PROCESS_BUILD_TESTS=OFF \
             -DVIX_NET_BUILD_TESTS=OFF \
             -DVIX_NET_FETCH_ERROR=OFF \
