@@ -13,7 +13,8 @@
  *  Vix.cpp
  *
  */
-#include <vix/ai/agent/agent.hpp>
+
+#include <vix/ai/agent/AgentRuntime.hpp>
 #include <vix/print.hpp>
 #include <memory>
 

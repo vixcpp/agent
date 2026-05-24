@@ -16,7 +16,7 @@
 #include <memory>
 #include <string_view>
 
-#include <vix/ai/agent/agent.hpp>
+#include <vix/ai/agent/AgentRuntime.hpp>
 #include <vix/json/json.hpp>
 #include <vix/print.hpp>
 

@@ -13,8 +13,8 @@
  *  Vix.cpp
  *
  */
-#ifndef VIX_AI_AGENT_AGENT_UMBRELLA_HPP
-#define VIX_AI_AGENT_AGENT_UMBRELLA_HPP
+#ifndef VIX_AI_AGENT_AGENT_RUNTIME_HPP
+#define VIX_AI_AGENT_AGENT_RUNTIME_HPP
 
 #include <vix/ai/agent/Agent.hpp>
 #include <vix/ai/agent/AgentConfig.hpp>
@@ -48,4 +48,4 @@
 #include <vix/ai/agent/AgentRunStore.hpp>
 #include <vix/ai/agent/AgentConfigValidator.hpp>
 
-#endif // VIX_AI_AGENT_AGENT_UMBRELLA_HPP
+#endif // VIX_AI_AGENT_AGENT_RUNTIME_HPP

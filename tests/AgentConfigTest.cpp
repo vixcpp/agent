@@ -20,11 +20,17 @@
 #include <vix/ai/agent/AgentConfig.hpp>
 #include <vix/ai/agent/AgentConfigLoader.hpp>
 #include <vix/ai/agent/AgentConfigValidator.hpp>
+#include <vix/error/Error.hpp>
 #include <vix/env/Set.hpp>
 #include <vix/env/Unset.hpp>
 
 namespace
 {
+  void assert_no_error(const vix::error::Error &error)
+  {
+    assert(!error);
+  }
+
   void test_default_config()
   {
     vix::ai::agent::AgentConfig config;
@@ -65,13 +71,13 @@ namespace
 
   void test_environment_loader_overrides()
   {
-    vix::env::set("VIX_AGENT_TEST_PROVIDER", "ollama", true);
-    vix::env::set("VIX_AGENT_TEST_MODEL", "qwen2.5-coder", true);
-    vix::env::set("VIX_AGENT_TEST_MODEL_URL", "http://127.0.0.1:11434", true);
-    vix::env::set("VIX_AGENT_TEST_TIMEOUT_MS", "15000", true);
-    vix::env::set("VIX_AGENT_TEST_MAX_FILES", "42", true);
-    vix::env::set("VIX_AGENT_TEST_ALLOW_PROCESS", "true", true);
-    vix::env::set("VIX_AGENT_TEST_ALLOW_FILE_WRITE", "false", true);
+    assert_no_error(vix::env::set("VIX_AGENT_TEST_PROVIDER", "ollama", true));
+    assert_no_error(vix::env::set("VIX_AGENT_TEST_MODEL", "qwen2.5-coder", true));
+    assert_no_error(vix::env::set("VIX_AGENT_TEST_MODEL_URL", "http://127.0.0.1:11434", true));
+    assert_no_error(vix::env::set("VIX_AGENT_TEST_TIMEOUT_MS", "15000", true));
+    assert_no_error(vix::env::set("VIX_AGENT_TEST_MAX_FILES", "42", true));
+    assert_no_error(vix::env::set("VIX_AGENT_TEST_ALLOW_PROCESS", "true", true));
+    assert_no_error(vix::env::set("VIX_AGENT_TEST_ALLOW_FILE_WRITE", "false", true));
 
     auto config = vix::ai::agent::AgentConfigLoader::from_environment("VIX_AGENT_TEST_");
 
@@ -83,13 +89,13 @@ namespace
     assert(config.allow_process);
     assert(!config.allow_file_write);
 
-    vix::env::unset("VIX_AGENT_TEST_PROVIDER");
-    vix::env::unset("VIX_AGENT_TEST_MODEL");
-    vix::env::unset("VIX_AGENT_TEST_MODEL_URL");
-    vix::env::unset("VIX_AGENT_TEST_TIMEOUT_MS");
-    vix::env::unset("VIX_AGENT_TEST_MAX_FILES");
-    vix::env::unset("VIX_AGENT_TEST_ALLOW_PROCESS");
-    vix::env::unset("VIX_AGENT_TEST_ALLOW_FILE_WRITE");
+    assert_no_error(vix::env::unset("VIX_AGENT_TEST_PROVIDER"));
+    assert_no_error(vix::env::unset("VIX_AGENT_TEST_MODEL"));
+    assert_no_error(vix::env::unset("VIX_AGENT_TEST_MODEL_URL"));
+    assert_no_error(vix::env::unset("VIX_AGENT_TEST_TIMEOUT_MS"));
+    assert_no_error(vix::env::unset("VIX_AGENT_TEST_MAX_FILES"));
+    assert_no_error(vix::env::unset("VIX_AGENT_TEST_ALLOW_PROCESS"));
+    assert_no_error(vix::env::unset("VIX_AGENT_TEST_ALLOW_FILE_WRITE"));
   }
 
   void test_config_validator_accepts_default_config()
