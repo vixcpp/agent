@@ -551,10 +551,28 @@ if(VIX_AI_AGENT_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests")
     tests/AgentPublicApiTest.cpp
   )
 
+  target_compile_features(vix_ai_agent_tests
+    PRIVATE
+      cxx_std_20
+  )
+
   target_link_libraries(vix_ai_agent_tests
     PRIVATE
       vix::ai_agent
   )
+
+  if(VIX_ENABLE_SANITIZERS AND NOT MSVC)
+    target_compile_options(vix_ai_agent_tests
+      PRIVATE
+        -fno-omit-frame-pointer
+        -fsanitize=address,undefined
+    )
+
+    target_link_options(vix_ai_agent_tests
+      PRIVATE
+        -fsanitize=address,undefined
+    )
+  endif()
 
   add_test(
     NAME vix_ai_agent_tests
