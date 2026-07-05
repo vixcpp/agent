@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 #include <chrono>
+#include <limits>
 #include <optional>
 
 #include <vix/ai/agent/AgentError.hpp>
@@ -711,7 +712,9 @@ namespace vix::ai::agent
                     ? config_.model
                     : request.model_override;
 
-    out.timeout_ms = config_.timeout_ms;
+    out.timeout_ms = config_.timeout_ms > std::numeric_limits<unsigned>::max()
+                         ? std::numeric_limits<unsigned>::max()
+                         : static_cast<unsigned>(config_.timeout_ms);
     out.stream = false;
 
     out.system_prompt = mode_to_instruction(request.mode);

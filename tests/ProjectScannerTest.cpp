@@ -26,9 +26,9 @@ namespace
 {
   void test_project_scanner_finds_source_files()
   {
-    vix::fs::ensure_directory(".vix-agent-test/src");
-    vix::fs::write_text(".vix-agent-test/src/main.cpp", "int main() { return 0; }\n");
-    vix::fs::write_text(".vix-agent-test/README.md", "# test\n");
+    assert(vix::fs::ensure_directory(".vix-agent-test/src"));
+    assert(vix::fs::write_text(".vix-agent-test/src/main.cpp", "int main() { return 0; }\n"));
+    assert(vix::fs::write_text(".vix-agent-test/README.md", "# test\n"));
 
     vix::ai::agent::AgentConfig config;
     config.max_files = 50;
@@ -67,11 +67,11 @@ namespace
 
   void test_project_scanner_respects_max_files()
   {
-    vix::fs::ensure_directory(".vix-agent-test-limit");
+    assert(vix::fs::ensure_directory(".vix-agent-test-limit"));
 
-    vix::fs::write_text(".vix-agent-test-limit/a.cpp", "int a = 1;\n");
-    vix::fs::write_text(".vix-agent-test-limit/b.cpp", "int b = 2;\n");
-    vix::fs::write_text(".vix-agent-test-limit/c.cpp", "int c = 3;\n");
+    assert(vix::fs::write_text(".vix-agent-test-limit/a.cpp", "int a = 1;\n"));
+    assert(vix::fs::write_text(".vix-agent-test-limit/b.cpp", "int b = 2;\n"));
+    assert(vix::fs::write_text(".vix-agent-test-limit/c.cpp", "int c = 3;\n"));
 
     vix::ai::agent::AgentConfig config;
     config.max_files = 1;
@@ -91,8 +91,8 @@ namespace
 
   void test_file_scan_policy_rejects_large_files()
   {
-    vix::fs::ensure_directory(".vix-agent-test-large");
-    vix::fs::write_text(".vix-agent-test-large/large.cpp", "0123456789");
+    assert(vix::fs::ensure_directory(".vix-agent-test-large"));
+    assert(vix::fs::write_text(".vix-agent-test-large/large.cpp", "0123456789"));
 
     vix::ai::agent::AgentConfig config;
     config.max_files = 50;

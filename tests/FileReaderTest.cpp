@@ -38,10 +38,10 @@ namespace
 
   void test_file_reader_reads_allowed_text_file()
   {
-    vix::fs::ensure_directory(".vix-agent-reader-test/src");
-    vix::fs::write_text(
+    assert(vix::fs::ensure_directory(".vix-agent-reader-test/src"));
+    assert(vix::fs::write_text(
         ".vix-agent-reader-test/src/main.cpp",
-        "int main() { return 0; }\n");
+        "int main() { return 0; }\n"));
 
     auto reader = make_reader(".vix-agent-reader-test");
 
@@ -55,8 +55,8 @@ namespace
 
   void test_file_reader_rejects_path_outside_workspace()
   {
-    vix::fs::ensure_directory(".vix-agent-reader-outside");
-    vix::fs::write_text(".vix-agent-reader-outside/main.cpp", "int main() {}\n");
+    assert(vix::fs::ensure_directory(".vix-agent-reader-outside"));
+    assert(vix::fs::write_text(".vix-agent-reader-outside/main.cpp", "int main() {}\n"));
 
     auto reader = make_reader(".vix-agent-reader-outside");
 
@@ -67,8 +67,8 @@ namespace
 
   void test_file_reader_rejects_hidden_file()
   {
-    vix::fs::ensure_directory(".vix-agent-reader-hidden");
-    vix::fs::write_text(".vix-agent-reader-hidden/.env", "SECRET=value\n");
+    assert(vix::fs::ensure_directory(".vix-agent-reader-hidden"));
+    assert(vix::fs::write_text(".vix-agent-reader-hidden/.env", "SECRET=value\n"));
 
     auto reader = make_reader(".vix-agent-reader-hidden");
 
@@ -79,8 +79,8 @@ namespace
 
   void test_file_reader_rejects_large_file()
   {
-    vix::fs::ensure_directory(".vix-agent-reader-large");
-    vix::fs::write_text(".vix-agent-reader-large/large.cpp", "0123456789");
+    assert(vix::fs::ensure_directory(".vix-agent-reader-large"));
+    assert(vix::fs::write_text(".vix-agent-reader-large/large.cpp", "0123456789"));
 
     vix::ai::agent::AgentConfig config;
     config.max_file_size = 4;
@@ -94,8 +94,8 @@ namespace
 
   void test_file_reader_rejects_unknown_extension()
   {
-    vix::fs::ensure_directory(".vix-agent-reader-extension");
-    vix::fs::write_text(".vix-agent-reader-extension/file.bin", "binary");
+    assert(vix::fs::ensure_directory(".vix-agent-reader-extension"));
+    assert(vix::fs::write_text(".vix-agent-reader-extension/file.bin", "binary"));
 
     auto reader = make_reader(".vix-agent-reader-extension");
 

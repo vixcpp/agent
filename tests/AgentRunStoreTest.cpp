@@ -28,7 +28,7 @@ namespace
 {
   void test_agent_run_store_writes_run_files()
   {
-    vix::fs::ensure_directory(".vix-agent-run-store-test");
+    assert(vix::fs::ensure_directory(".vix-agent-run-store-test"));
 
     vix::ai::agent::AgentConfig config;
     auto workspace =

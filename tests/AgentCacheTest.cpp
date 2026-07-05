@@ -70,7 +70,7 @@ namespace
 
   void test_agent_reuses_cached_model_response()
   {
-    vix::fs::ensure_directory(".vix-agent-cache-test");
+    assert(vix::fs::ensure_directory(".vix-agent-cache-test"));
 
     vix::ai::agent::AgentConfig config;
     config.provider = "fake";

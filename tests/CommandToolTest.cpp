@@ -51,7 +51,7 @@ namespace
 
   void test_command_tool_rejects_when_process_disabled()
   {
-    vix::fs::ensure_directory(".vix-agent-command-disabled");
+    assert(vix::fs::ensure_directory(".vix-agent-command-disabled"));
 
     vix::ai::agent::AgentConfig config;
     config.allow_process = false;
@@ -66,7 +66,7 @@ namespace
 
   void test_command_tool_rejects_invalid_tool_call()
   {
-    vix::fs::ensure_directory(".vix-agent-command-invalid");
+    assert(vix::fs::ensure_directory(".vix-agent-command-invalid"));
 
     vix::ai::agent::AgentConfig config;
     config.allow_process = true;
@@ -83,7 +83,7 @@ namespace
 
   void test_command_tool_rejects_blocked_program()
   {
-    vix::fs::ensure_directory(".vix-agent-command-blocked");
+    assert(vix::fs::ensure_directory(".vix-agent-command-blocked"));
 
     vix::ai::agent::AgentConfig config;
     config.allow_process = true;
@@ -98,7 +98,7 @@ namespace
 
   void test_command_tool_runs_simple_allowed_command()
   {
-    vix::fs::ensure_directory(".vix-agent-command-allowed");
+    assert(vix::fs::ensure_directory(".vix-agent-command-allowed"));
 
     vix::ai::agent::AgentConfig config;
     config.allow_process = true;
@@ -118,7 +118,7 @@ namespace
 
   void test_command_tool_rejects_workdir_outside_workspace()
   {
-    vix::fs::ensure_directory(".vix-agent-command-workdir");
+    assert(vix::fs::ensure_directory(".vix-agent-command-workdir"));
 
     vix::ai::agent::AgentConfig config;
     config.allow_process = true;
@@ -136,7 +136,7 @@ namespace
 
   void test_command_tool_truncates_output()
   {
-    vix::fs::ensure_directory(".vix-agent-command-truncate");
+    assert(vix::fs::ensure_directory(".vix-agent-command-truncate"));
 
     vix::ai::agent::AgentConfig config;
     config.allow_process = true;
@@ -156,7 +156,7 @@ namespace
 
   void test_command_tool_rejects_program_not_in_allowlist()
   {
-    vix::fs::ensure_directory(".vix-agent-command-not-allowed");
+    assert(vix::fs::ensure_directory(".vix-agent-command-not-allowed"));
 
     vix::ai::agent::AgentConfig config;
     config.allow_process = true;

@@ -135,8 +135,8 @@ namespace
 
   void test_agent_runs_with_fake_provider()
   {
-    vix::fs::ensure_directory(".vix-agent-run-test");
-    vix::fs::write_text(".vix-agent-run-test/main.cpp", "int main() { return 0; }\n");
+    assert(vix::fs::ensure_directory(".vix-agent-run-test"));
+    assert(vix::fs::write_text(".vix-agent-run-test/main.cpp", "int main() { return 0; }\n"));
 
     vix::ai::agent::AgentConfig config;
     config.provider = "fake";
@@ -212,10 +212,10 @@ namespace
 
   void test_agent_runs_tool_loop_with_fake_provider()
   {
-    vix::fs::ensure_directory(".vix-agent-tool-loop-test");
-    vix::fs::write_text(
+    assert(vix::fs::ensure_directory(".vix-agent-tool-loop-test"));
+    assert(vix::fs::write_text(
         ".vix-agent-tool-loop-test/main.cpp",
-        "int main() { return 0; }\n");
+        "int main() { return 0; }\n"));
 
     vix::ai::agent::AgentConfig config;
     config.provider = "fake";
