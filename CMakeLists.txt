@@ -208,10 +208,6 @@ endfunction()
 # --------------------------------------------------------------------
 # Nested dependency policy
 # --------------------------------------------------------------------
-if(NOT TARGET vix::utils)
-  set(VIX_CRYPTO_FETCH_UTILS OFF CACHE BOOL "Auto-fetch vix::utils if missing" FORCE)
-endif()
-
 vix_ai_agent_require_dependency(
   vix::error
   vix_error
