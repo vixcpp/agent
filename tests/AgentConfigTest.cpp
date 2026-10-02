@@ -212,6 +212,7 @@ void test_command_tool();
 void test_agent_run_store();
 void test_agent_cache();
 void test_agent_public_api();
+void test_ollama_provider();
 
 int main()
 {
@@ -226,6 +227,7 @@ int main()
   test_agent_run_store();
   test_agent_cache();
   test_agent_public_api();
+  test_ollama_provider();
 
   std::cout << "vix_ai_agent tests passed\n";
   return 0;

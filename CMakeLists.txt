@@ -72,7 +72,8 @@ option(VIX_AI_AGENT_FETCH_JSON "Auto-fetch vix::json if missing" ON)
 option(VIX_AI_AGENT_FETCH_FS "Auto-fetch vix::fs if missing" ON)
 option(VIX_AI_AGENT_FETCH_PATH "Auto-fetch vix::path if missing" ON)
 option(VIX_AI_AGENT_FETCH_PROCESS "Auto-fetch vix::process if missing" ON)
-option(VIX_AI_AGENT_FETCH_NET "Auto-fetch vix::net if missing" ON)
+option(VIX_AI_AGENT_FETCH_ASYNC "Auto-fetch vix::async if missing for vix::requests" ON)
+option(VIX_AI_AGENT_FETCH_REQUESTS "Auto-fetch vix::requests if missing" ON)
 option(VIX_AI_AGENT_FETCH_ENV "Auto-fetch vix::env if missing" ON)
 option(VIX_AI_AGENT_FETCH_TIME "Auto-fetch vix::time if missing" ON)
 option(VIX_AI_AGENT_FETCH_CRYPTO "Auto-fetch vix::crypto if missing" ON)
@@ -102,7 +103,8 @@ if(DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD)
   set(VIX_AI_AGENT_FETCH_FS OFF CACHE BOOL "Auto-fetch vix::fs if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_PATH OFF CACHE BOOL "Auto-fetch vix::path if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_PROCESS OFF CACHE BOOL "Auto-fetch vix::process if missing" FORCE)
-  set(VIX_AI_AGENT_FETCH_NET OFF CACHE BOOL "Auto-fetch vix::net if missing" FORCE)
+  set(VIX_AI_AGENT_FETCH_ASYNC OFF CACHE BOOL "Auto-fetch vix::async if missing for vix::requests" FORCE)
+  set(VIX_AI_AGENT_FETCH_REQUESTS OFF CACHE BOOL "Auto-fetch vix::requests if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_ENV OFF CACHE BOOL "Auto-fetch vix::env if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_TIME OFF CACHE BOOL "Auto-fetch vix::time if missing" FORCE)
   set(VIX_AI_AGENT_FETCH_CRYPTO OFF CACHE BOOL "Auto-fetch vix::crypto if missing" FORCE)
@@ -254,12 +256,21 @@ vix_ai_agent_require_dependency(
 )
 
 vix_ai_agent_require_dependency(
-  vix::net
-  vix_net
-  net
-  VIX_AI_AGENT_FETCH_NET
-  https://github.com/vixcpp/net.git
-  v0.1.0
+  vix::async
+  async
+  async
+  VIX_AI_AGENT_FETCH_ASYNC
+  https://github.com/vixcpp/async.git
+  v1.2.1
+)
+
+vix_ai_agent_require_dependency(
+  vix::requests
+  vix_requests
+  requests
+  VIX_AI_AGENT_FETCH_REQUESTS
+  https://github.com/vixcpp/requests.git
+  v1.0.0
 )
 
 vix_ai_agent_require_dependency(
@@ -361,12 +372,13 @@ target_link_libraries(vix_ai_agent
     vix::fs
     vix::path
     vix::process
-    vix::net
     vix::env
     vix::time
     vix::crypto
     vix::log
     vix::cache
+  PRIVATE
+    vix::requests
 )
 
 set_target_properties(vix_ai_agent
@@ -545,11 +557,19 @@ if(VIX_AI_AGENT_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests")
     tests/AgentRunStoreTest.cpp
     tests/AgentCacheTest.cpp
     tests/AgentPublicApiTest.cpp
+    tests/OllamaProviderTest.cpp
   )
 
   target_compile_features(vix_ai_agent_tests
     PRIVATE
       cxx_std_20
+  )
+
+  # OllamaHttpTransport is an Agent implementation/test seam, never an
+  # installed or public Agent header.
+  target_include_directories(vix_ai_agent_tests
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
   )
 
   target_link_libraries(vix_ai_agent_tests
@@ -588,7 +608,6 @@ message(STATUS "Json target:    vix::json")
 message(STATUS "Fs target:      vix::fs")
 message(STATUS "Path target:    vix::path")
 message(STATUS "Process target: vix::process")
-message(STATUS "Net target:     vix::net")
 message(STATUS "Env target:     vix::env")
 message(STATUS "Time target:    vix::time")
 message(STATUS "Crypto target:  vix::crypto")

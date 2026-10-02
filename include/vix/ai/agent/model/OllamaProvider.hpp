@@ -24,10 +24,14 @@
 #include <vix/ai/agent/model/ModelProvider.hpp>
 #include <vix/ai/agent/model/ModelRequest.hpp>
 #include <vix/ai/agent/model/ModelResponse.hpp>
-#include <vix/net/http/Client.hpp>
 
 namespace vix::ai::agent
 {
+  namespace detail
+  {
+    class OllamaProviderTestAccess;
+  }
+
   /**
    * @class OllamaProvider
    * @brief Model provider for a local Ollama-compatible server.
@@ -38,9 +42,8 @@ namespace vix::ai::agent
    *
    * The provider is local-first and suitable for offline developer workflows.
    *
-   * The HTTP transport is abstracted through vix::net::http::Client.
-   * By default, the provider creates a curl-backed HTTP client, but callers
-   * may inject another implementation later without changing the provider API.
+   * HTTP execution is an internal implementation detail. The public provider
+   * API exposes only Agent/model concepts.
    */
   class OllamaProvider final : public ModelProvider
   {
@@ -49,7 +52,6 @@ namespace vix::ai::agent
      * @brief Construct an Ollama provider from AgentConfig.
      *
      * The endpoint and default model are read from the agent configuration.
-     * A default HTTP client is created automatically when none is injected.
      *
      * @param config Agent configuration.
      */
@@ -58,40 +60,10 @@ namespace vix::ai::agent
     /**
      * @brief Construct an Ollama provider from endpoint and default model.
      *
-     * A default HTTP client is created automatically when none is injected.
-     *
      * @param endpoint Ollama server endpoint.
      * @param default_model Default model name.
      */
     OllamaProvider(std::string endpoint, std::string default_model);
-
-    /**
-     * @brief Construct an Ollama provider from AgentConfig and HTTP client.
-     *
-     * This overload allows tests or advanced users to inject a custom HTTP
-     * client implementation.
-     *
-     * @param config Agent configuration.
-     * @param http_client HTTP client used to send Ollama requests.
-     */
-    OllamaProvider(
-        AgentConfig config,
-        std::shared_ptr<vix::net::http::Client> http_client);
-
-    /**
-     * @brief Construct an Ollama provider from endpoint, model and HTTP client.
-     *
-     * This overload allows the provider to use a custom HTTP transport while
-     * keeping the provider logic independent from the concrete backend.
-     *
-     * @param endpoint Ollama server endpoint.
-     * @param default_model Default model name.
-     * @param http_client HTTP client used to send Ollama requests.
-     */
-    OllamaProvider(
-        std::string endpoint,
-        std::string default_model,
-        std::shared_ptr<vix::net::http::Client> http_client);
 
     /**
      * @brief Return provider name.
@@ -130,24 +102,11 @@ namespace vix::ai::agent
      */
     [[nodiscard]] const std::string &default_model() const noexcept;
 
-    /**
-     * @brief Return the HTTP client used by the provider.
-     */
-    [[nodiscard]] std::shared_ptr<vix::net::http::Client>
-    http_client() const noexcept;
-
-    /**
-     * @brief Replace the HTTP client used by the provider.
-     *
-     * If the provided client is null, the provider recreates its default
-     * curl-backed HTTP client.
-     *
-     * @param client HTTP client implementation.
-     */
-    void set_http_client(
-        std::shared_ptr<vix::net::http::Client> client);
-
   private:
+    class OllamaHttpClient;
+
+    friend class detail::OllamaProviderTestAccess;
+
     /**
      * @brief Build the effective model name for a request.
      */
@@ -161,7 +120,7 @@ namespace vix::ai::agent
         const ModelRequest &request) const;
 
     /**
-     * @brief Ensure the provider has a usable HTTP client.
+     * @brief Ensure the provider has a usable private HTTP implementation.
      */
     void ensure_http_client();
 
@@ -169,7 +128,7 @@ namespace vix::ai::agent
     std::string endpoint_{"http://127.0.0.1:11434"};
     std::string default_model_{"llama3"};
     AgentConfig config_{};
-    std::shared_ptr<vix::net::http::Client> http_client_{};
+    std::shared_ptr<OllamaHttpClient> http_client_{};
   };
 
 } // namespace vix::ai::agent

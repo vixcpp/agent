@@ -14,8 +14,12 @@
  *
  */
 #include <vix/ai/agent/model/OllamaProvider.hpp>
+#include "detail/OllamaHttpTransport.hpp"
 
 #include <algorithm>
+#include <chrono>
+#include <exception>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -23,12 +27,14 @@
 #include <vix/ai/agent/AgentError.hpp>
 #include <vix/ai/agent/AgentRunTimer.hpp>
 #include <vix/json/json.hpp>
-#include <vix/net/http/ClientRequest.hpp>
-#include <vix/net/http/CurlClient.hpp>
-#include <vix/net/http/Method.hpp>
 #include <vix/process/Command.hpp>
 #include <vix/process/Output.hpp>
 #include <vix/process/PipeMode.hpp>
+#include <vix/requests/Body.hpp>
+#include <vix/requests/Client.hpp>
+#include <vix/requests/Error.hpp>
+#include <vix/requests/RequestOptions.hpp>
+#include <vix/requests/Timeout.hpp>
 
 namespace vix::ai::agent
 {
@@ -56,6 +62,69 @@ namespace vix::ai::agent
     {
       return endpoint.rfind("http://", 0) == 0 ||
              endpoint.rfind("https://", 0) == 0;
+    }
+
+    [[nodiscard]] detail::OllamaHttpResult send_with_requests(
+        const vix::requests::Client &client,
+        const detail::OllamaHttpRequest &request)
+    {
+      try
+      {
+        vix::requests::RequestOptions options;
+        options.follow_redirects = false;
+        options.max_redirects = 0;
+
+        for (const auto &[name, value] : request.headers)
+        {
+          options.headers.set(name, value);
+        }
+
+        if (request.timeout_ms > 0)
+        {
+          using Duration = vix::requests::Timeout::Duration;
+          options.timeout = vix::requests::Timeout(
+              Duration{static_cast<Duration::rep>(request.timeout_ms)});
+        }
+
+        const auto requests_response = client.request(
+            vix::requests::Method::Post,
+            request.url,
+            std::move(options),
+            vix::requests::raw_body(request.body));
+
+        detail::OllamaHttpResponse response;
+        response.status_code = requests_response.status_code();
+        response.body = requests_response.body();
+
+        for (const auto &header : requests_response.headers().entries())
+        {
+          response.headers[header.name] = header.value;
+        }
+
+        return response;
+      }
+      catch (const vix::requests::RequestException &exception)
+      {
+        return make_agent_error(
+            AgentErrorCode::ModelRequestFailed,
+            exception.what());
+      }
+      catch (const std::exception &exception)
+      {
+        return make_agent_error(
+            AgentErrorCode::ModelRequestFailed,
+            exception.what());
+      }
+    }
+
+    [[nodiscard]] detail::OllamaHttpTransport make_requests_transport()
+    {
+      auto client = std::make_shared<vix::requests::Client>();
+
+      return [client](const detail::OllamaHttpRequest &request)
+      {
+        return send_with_requests(*client, request);
+      };
     }
 
     [[nodiscard]] std::string trim_trailing_slashes(
@@ -191,6 +260,37 @@ namespace vix::ai::agent
     }
   } // namespace
 
+  class OllamaProvider::OllamaHttpClient
+  {
+  public:
+    OllamaHttpClient()
+        : transport_(make_requests_transport())
+    {
+    }
+
+    [[nodiscard]] detail::OllamaHttpResult send(
+        const detail::OllamaHttpRequest &request) const
+    {
+      return transport_(request);
+    }
+
+    void set_transport(detail::OllamaHttpTransport transport)
+    {
+      transport_ = std::move(transport);
+    }
+
+  private:
+    detail::OllamaHttpTransport transport_;
+  };
+
+  void detail::OllamaProviderTestAccess::set_http_transport(
+      OllamaProvider &provider,
+      OllamaHttpTransport transport)
+  {
+    provider.ensure_http_client();
+    provider.http_client_->set_transport(std::move(transport));
+  }
+
   OllamaProvider::OllamaProvider(AgentConfig config)
       : endpoint_(trim_trailing_slashes(config.model_url)),
         default_model_(config.model),
@@ -207,29 +307,6 @@ namespace vix::ai::agent
         default_model_(std::move(default_model)),
         config_(),
         http_client_(nullptr)
-  {
-    ensure_http_client();
-  }
-
-  OllamaProvider::OllamaProvider(
-      AgentConfig config,
-      std::shared_ptr<vix::net::http::Client> http_client)
-      : endpoint_(trim_trailing_slashes(config.model_url)),
-        default_model_(config.model),
-        config_(std::move(config)),
-        http_client_(std::move(http_client))
-  {
-    ensure_http_client();
-  }
-
-  OllamaProvider::OllamaProvider(
-      std::string endpoint,
-      std::string default_model,
-      std::shared_ptr<vix::net::http::Client> http_client)
-      : endpoint_(trim_trailing_slashes(std::move(endpoint))),
-        default_model_(std::move(default_model)),
-        config_(),
-        http_client_(std::move(http_client))
   {
     ensure_http_client();
   }
@@ -306,14 +383,12 @@ namespace vix::ai::agent
     const vix::json::Json payload =
         build_ollama_payload(model, prompt, request);
 
-    vix::net::http::ClientRequest http_request;
-
-    http_request
-        .set_method(vix::net::http::Method::Post)
-        .set_url(endpoint_ + "/api/generate")
-        .set_header("Content-Type", "application/json")
-        .set_body(payload.dump())
-        .set_timeout_ms(effective_timeout_ms(config_, request));
+    detail::OllamaHttpRequest http_request;
+    http_request.method = "POST";
+    http_request.url = endpoint_ + "/api/generate";
+    http_request.headers["Content-Type"] = "application/json";
+    http_request.body = payload.dump();
+    http_request.timeout_ms = effective_timeout_ms(config_, request);
 
     auto http_response = http_client_->send(http_request);
     if (!http_response)
@@ -411,19 +486,6 @@ namespace vix::ai::agent
     return default_model_;
   }
 
-  std::shared_ptr<vix::net::http::Client>
-  OllamaProvider::http_client() const noexcept
-  {
-    return http_client_;
-  }
-
-  void OllamaProvider::set_http_client(
-      std::shared_ptr<vix::net::http::Client> client)
-  {
-    http_client_ = std::move(client);
-    ensure_http_client();
-  }
-
   std::string OllamaProvider::effective_model(
       const ModelRequest &request) const
   {
@@ -450,7 +512,7 @@ namespace vix::ai::agent
   {
     if (!http_client_)
     {
-      http_client_ = std::make_shared<vix::net::http::CurlClient>();
+      http_client_ = std::make_shared<OllamaHttpClient>();
     }
   }
 
